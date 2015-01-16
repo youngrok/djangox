@@ -40,4 +40,27 @@ bower.json
 
     bower install
     
+settings.py
+
+    INSTALLED_APPS = (
+        'social.apps.django_app.default',
+        'django_extensions',
+        'unilogin',
+        'myapp',
+    )
     
+urls.py
+
+    url(r'~', include('unilogin.urls')),
+    url(r'~', discover_controllers(dashboard.controllers)),
+    
+myapp/controllers package
+
+first index
+
+    from djangox.mako.shortcuts import render_to_response
+
+
+    def index(request):
+        return render_to_response('index.html', locals())
+        
