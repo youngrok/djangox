@@ -145,8 +145,3 @@ You can inject default context with django settings MAKO_DEFAULT_CONTEXT. It's d
 * render_to_string
 * support filesystem loader (settings.TEMPLATE_DIR)
 * any other feature that is supported by django template but not supported by djangox-mako.
-
-
-
-
-
