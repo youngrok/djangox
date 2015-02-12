@@ -56,6 +56,12 @@ template_lookup = TemplateLookup(directories=app_template_dirs,
                                  )
 
 def render_to_response(filename, dictionary, context_instance=None):
+    '''
+    :param filename:
+    :param dictionary:
+    :param context_instance:
+    :return: rendered django HttpResponse
+    '''
 
     dictionary.update(default_context)
 
@@ -69,6 +75,8 @@ def render_to_response(filename, dictionary, context_instance=None):
     try:
         template = template_lookup.get_template(filename)
         return HttpResponse(template.render(**dictionary))
+    except exceptions.TopLevelLookupException:
+        raise
     except:
         traceback.print_exc()
         return HttpResponseServerError(exceptions.html_error_template().render())
