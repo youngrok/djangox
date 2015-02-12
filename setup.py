@@ -7,7 +7,7 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.0.2',
+      version='0.0.3',
       packages=find_packages(),
 
       classifiers = [
