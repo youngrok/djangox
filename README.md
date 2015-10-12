@@ -3,6 +3,8 @@ Another way of using django. Convention over configuration for urls, mako templa
 
 This package was originated from [djangox-mako](http://github.com/youngrok/djangox-mako) and [djangox-route](http://github.com/youngrok/djangox-route). The namespace package of python sucks, so I integrated two packages into one, and planned to add other features.
 
+[TOC]
+
 ## Install
 
 	pip install djangox
@@ -73,19 +75,29 @@ url above will dispatch /api/hello to hello.index(request)
 
 
 ## djangox.mako
-django mako adapter
+django mako adapter. Now support backend for django template engine (django >= 1.8).
 
 ### template loader
-Currently djangox-mako supports only app directories loader. You can put template file in your app directory's subdirectory named 'templates', djangox-mako can access that.
+Currently djangox.mako supports only app directories loader. You can put template file in your app directory's subdirectory named 'templates', djangox-mako can access that.
 
 ### usage
-#### render_to_response
+#### django 1.8 render
+
+	def someview(request):
+	    ...
+	    ...
+        return render(request, 'dir/file.html', locals())
+	
+#### render_to_response (*deprecated in django 1.8*)
+
+
 	def someview(request):
 	    ...
 	    ...
         return render_to_response('dir/file.html', locals())
         
-#### render_to_response with RequestContext
+#### render_to_response with RequestContext (*deprecated in django 1.8*)
+
 	def someview(request):
 	    ...
 	    ...
@@ -99,7 +111,7 @@ django template
 
     {% url 'path.to.some_view' arg1=v1 arg2=v2 %}
     
-djangox-mako
+mako
 
     ${url('path.to.some_view', v1, v2)}
 
@@ -112,7 +124,7 @@ The code above will be rendered as:
 
     <input type="hidden" name="csrfmiddlewaretoken" value="26ec0b9f301f077da66f7aa2d2ae11cd" />	
     
-djangox-mako
+mako
 
     <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}" />
 
@@ -125,7 +137,7 @@ django template
 
 	{% static 'path/to/style.css' %}
 
-djangox-mako
+mako
 
 	${static('path/to/style.css')}
 
@@ -133,15 +145,12 @@ djangox-mako
 Django settings variable DEFAULT_CHARSET will be used for input & output of templates. if None, 'utf8' will be default.
 
 #### default context
-You can inject default context with django settings MAKO_DEFAULT_CONTEXT. It's dict type.
-
-### Note
-* Package name was changed at ver 1.0.2. djangoxmako -> djangox.mako. It uses python namesapce package.
+You can inject default context with django settings MAKO_DEFAULT_CONTEXT. It's dict type. It also possible to use TEMPLATES config in settings.py.
 
 ### TODO
-* consider necessity of django middleware. I don't think it's needed yet.
 * csrf_token_tag()
 * settings.TEMPLATE_DEBUG support
 * render_to_string
 * support filesystem loader (settings.TEMPLATE_DIR)
 * any other feature that is supported by django template but not supported by djangox-mako.
+
