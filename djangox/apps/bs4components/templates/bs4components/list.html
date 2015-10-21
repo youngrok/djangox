@@ -1,0 +1,6 @@
+<%page args="object_list, path"/>
+<ul>
+% for item in object_list:
+<li><a href="${path}/${item.id}">${item}</a></li>
+% endfor
+</ul>

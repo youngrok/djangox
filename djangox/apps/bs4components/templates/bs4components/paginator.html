@@ -1,0 +1,25 @@
+<%page args="page_obj, page_number, adjacent_size=4"/>
+<%
+    page_number = int(page_number) if page_number else int(request.GET.get('page', 1))
+    qd = request.GET.copy()
+    if 'page' in qd:
+        del qd['page']
+    querystring = qd.urlencode()
+%>
+<ul class="pagination">
+    % if page_number - adjacent_size > 1:
+        <li><a href="?${querystring}&page=1">1</a></li>
+    % endif
+    % if page_number - adjacent_size > 1 + 1:
+        <li class="disabled"><a>...</a></li>
+    % endif
+    % for p in range(max(1, page_number - adjacent_size), min(page_obj.paginator.num_pages, page_number + adjacent_size) + 1):
+        <li class="${'active' if page_number == p else ''}"><a href="?${querystring}&page=${p}">${p}</a></li>
+    % endfor
+    % if page_number + adjacent_size < page_obj.paginator.num_pages - 1:
+        <li class="disabled"><a>...</a></li>
+    % endif
+    % if page_number + adjacent_size < page_obj.paginator.num_pages:
+        <li><a href="?${querystring}&page=${page_obj.paginator.num_pages}">${page_obj.paginator.num_pages}</a></li>
+    % endif
+</ul>

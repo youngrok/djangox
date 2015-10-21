@@ -1,0 +1,94 @@
+<%def name="form(form, action, submit_label)">
+    <form class="form" action="${action}" method="POST">
+        <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
+        % for field in form.hidden_fields():
+            ${hidden_field(field)}
+        % endfor
+        % for field in form.visible_fields():
+            ${visible_field(field)}
+        % endfor
+        <input type="submit" value="${submit_label}" class="btn btn-primary">
+    </form>
+</%def>
+<%def name="visible_field(field)">
+    <div class="form-group ${'has-error' if field.errors else ''}">
+        <label for="field-${field.name}" class="control-label">${_(field.label)}</label>
+        % if hasattr(self, field.field.widget.__class__.__name__):
+            ${getattr(self, field.field.widget.__class__.__name__)(field)}
+        % else:
+            ${TextInput(field)}
+        %endif
+        % if field.help_text:
+            <p class="help-block">${_(field.help_text)}</p>
+        % endif
+        % for error in field.errors:
+            <p class="help-block">${ _(error) }</p>
+        % endfor
+    </div>
+</%def>
+
+<%def name="TextInput(field)">\
+<input id="field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="PasswordInput(field)">\
+<input id="field-${field.name}" type="password" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="EmailInput(field)">\
+<input id="field-${field.name}" type="email" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="URLInput(field)">\
+<input id="field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="NumberInput(field)">\
+<input id="field-${field.name}" type="number" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="Textarea(field)">\
+<textarea id="field-${field.name}" name="${field.name}" class="form-control">${field.value() or ''}</textarea>\
+</%def>
+
+<%def name="Select(field)">
+    <select id="field-${field.name}" name="${field.name}" class="form-control">
+        % for choice in field.field.choices:
+            <option value="${choice[0]}"
+                    ${'selected' if str(field.value()) == str(choice[0]) else ''}>${_(choice[1])}</option>
+        % endfor
+    </select>
+</%def>
+
+<%def name="SelectMultiple(field)">
+    <select id="field-${field.name}" name="${field.name}" class="form-control" multiple="multiple">
+        % for choice in field.field.choices:
+            <option value="${choice[0]}"
+                    ${'selected' if str(field.value()) == str(choice[0]) else ''}>${choice[1]}</option>
+        % endfor
+    </select>
+</%def>
+
+<%def name="DateTimeInput(field)">\
+<input id="field-${field.name}" type="datetime" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="DateInput(field)">\
+<input id="field-${field.name}" type="date" name="${field.name}" value="${field.value() or ''}" class="form-control datepicker">\
+</%def>
+
+<%def name="MonthInput(field)">\
+<input id="field-${field.name}" type="month" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
+<%def name="hidden_field(field)">\
+<input id="field-${field.name}" type="hidden" name="${field.name}" value="${field.value() or ''}">\
+        % for error in field.errors:
+            <label>${field.name}</label>
+            <p class="help-block">${ error }</p>
+        % endfor
+</%def>
+
+<%def name="CheckboxInput(field)">\
+<input id="field-${field.name}" type="checkbox" name="${field.name}" value="checked" ${'checked="checked"' if field.value() else ''} class="">\
+</%def>

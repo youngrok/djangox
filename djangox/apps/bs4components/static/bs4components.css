@@ -1,0 +1,55 @@
+body, a {
+    /*color: #43B6B1;*/
+}
+
+nav {
+    overflow: hidden;
+    box-shadow: 0px 1px 10px rgba(0, 0, 0, 0.1);
+}
+
+nav a:hover {
+    text-decoration: none;
+}
+
+nav .brand {
+    float: left;
+}
+
+nav .brand a {
+    display: block;
+    padding: 26px 10px 0 10px;
+    height: 88px;
+    font-size: 2em;
+    font-family: Savoye LET;
+    font-weight: bold;
+}
+
+nav ul { margin: 0; padding: 0; float: left}
+
+nav li {
+    float: left;
+    list-style: none;
+}
+
+nav li a {
+    color: #777;
+    display: block;
+    height: 88px;
+    vertical-align: middle;
+    transition: all 0.2s ease-out 0s;
+    line-height: 20px;
+    padding: 0 15px;
+}
+
+nav li a:active, nav li a:hover {
+    background: #43B6B1 none repeat scroll 0% 0%;
+    color: #FFF;
+}
+
+nav li a i.fa {
+    display: block;
+    text-align: center;
+    padding: 20px 0 10px;
+    font-size: 2em;
+}
+
