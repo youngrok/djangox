@@ -1,5 +1,5 @@
-<%def name="form(form, action, submit_label)">
-    <form class="form" action="${action}" method="POST">
+<%def name="form(form, action, submit_label, enctype='application/x-www-form-urlencoded')">
+    <form class="form" action="${action}" method="POST" enctype="${enctype}">
         <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
         % for field in form.hidden_fields():
             ${hidden_field(field)}
@@ -12,17 +12,17 @@
 </%def>
 <%def name="visible_field(field)">
     <div class="form-group ${'has-error' if field.errors else ''}">
-        <label for="field-${field.name}" class="control-label">${_(field.label)}</label>
+        <label for="field-${field.name}">${_(field.label)}</label>
         % if hasattr(self, field.field.widget.__class__.__name__):
             ${getattr(self, field.field.widget.__class__.__name__)(field)}
         % else:
             ${TextInput(field)}
         %endif
         % if field.help_text:
-            <p class="help-block">${_(field.help_text)}</p>
+            <p class="text-muted">${_(field.help_text)}</p>
         % endif
         % for error in field.errors:
-            <p class="help-block">${ _(error) }</p>
+            <p class="text-danger">${ _(error) }</p>
         % endfor
     </div>
 </%def>
@@ -39,12 +39,16 @@
 <input id="field-${field.name}" type="email" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
+<%def name="ClearableFileInput(field)">\
+<input id="field-${field.name}" type="file" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+</%def>
+
 <%def name="URLInput(field)">\
 <input id="field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
 <%def name="NumberInput(field)">\
-<input id="field-${field.name}" type="number" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<input id="field-${field.name}" type="number" name="${field.name}" value="${field.value()}" class="form-control">\
 </%def>
 
 <%def name="Textarea(field)">\

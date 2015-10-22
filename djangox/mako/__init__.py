@@ -12,6 +12,7 @@ from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine, _dirs_undefined
 from django.utils.deprecation import RemovedInDjango20Warning
 from django.utils.importlib import import_module
+from django.utils.translation import ugettext
 from mako.lookup import TemplateLookup
 from mako import exceptions
 from django.core.urlresolvers import reverse, get_resolver, get_urlconf
@@ -38,7 +39,8 @@ def url(view_name, *args, **kwargs):
 
 default_context = {
     'url' : url,
-    'static': static.static
+    'static': static.static,
+    '_': ugettext,
 }
 
 default_charset = getattr(settings, 'DEFAULT_CHARSET', 'utf8')
