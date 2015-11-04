@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse, HttpResponseServerError
 from django.template.backends.base import BaseEngine
+from django.template.base import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine, _dirs_undefined
 from django.utils.deprecation import RemovedInDjango20Warning
@@ -100,12 +101,15 @@ class MakoTemplateEngine(BaseEngine):
         options.setdefault('debug', settings.DEBUG)
         options.setdefault('file_charset', settings.FILE_CHARSET)
         super().__init__(params)
-        self.engine = Engine(self.dirs, self.app_dirs, **options)
+        self.app_dirs_subdirectories = options.get('app_dirs_subdirectories', None)
 
     def from_string(self, template_code):
         return MakoTemplateWrapper(Template(text=template_code))
 
     def get_template(self, template_name, dirs=_dirs_undefined):
+        if self.app_dirs_subdirectories and template_name.split('/')[0] not in self.app_dirs_subdirectories:
+            raise TemplateDoesNotExist('template does not exists in specified subdirectories: %s', str(self.app_dirs_subdirectories))
+
         return MakoTemplateWrapper(template_lookup.get_template(template_name))
 
 
