@@ -41,7 +41,7 @@ nav li a {
     padding: 0 15px;
 }
 
-nav li a:active, nav li a:hover {
+nav li a:active, nav li a:hover, nav li.active a {
     background: #43B6B1 none repeat scroll 0% 0%;
     color: #FFF;
 }
