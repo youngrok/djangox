@@ -1,0 +1,5 @@
+. ~/.bashrc
+. ~/venv/bin/activate
+export DJANGO_SETTINGS_MODULE=%(project_name)s.production
+export LC_ALL=en_US.UTF-8
+cd ~/%(project_name)s

@@ -1,0 +1,14 @@
+server {
+    listen      %(port)d;
+    server_name %(server_name)s %(server_alias)s;
+    client_max_body_size 200M;
+    access_log  /var/log/nginx/%(server_name)s.log;
+    location /static {
+        alias %(static_path)s;
+    }
+    location / {
+        uwsgi_pass 127.0.0.1:3031;
+        include uwsgi_params;
+    }
+
+}
