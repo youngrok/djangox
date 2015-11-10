@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Social Login</title>
+<link rel="stylesheet" type="text/css" href="${static('lib/bootstrap/dist/css/bootstrap.css')}">
+<link rel="stylesheet" type="text/css" href="${'lib/bootstrap-social/bootstrap-social.css'|static}">
+<link rel="stylesheet" type="text/css" href="${static('lib/font-awesome/css/font-awesome.min.css')}">
+<link rel="stylesheet" type="text/css" href="${static('unilogin/style.css')}">
+</head>
+
+<body class="login-page">
+<div class="container">
+    <h1><i class="fa-sign-in"></i> Login</h1>
+    % if messages:
+        % for message in messages:
+            <div class="alert alert-warning">
+                ${message}
+            </div>
+        % endfor
+    % endif
+    <div class="card">
+        <div class="card-header">You can login with these social login providers. Select one of buttons below.</div>
+        <ul class="card-block social-buttons" style="list-style: none">
+            % for provider in social_auth_providers:
+                <li>
+                    <a href="${url('social:begin', provider)}?next=${next}"
+                       title="${social_auth_providers[provider]['label']}"
+                       class="btn btn-social btn-${social_auth_providers[provider]['button']}">
+                        <i class="fa fa-${social_auth_providers[provider]['icon']}"></i>
+                        ${social_auth_providers[provider]['label']}
+                    </a>
+                </li>
+            % endfor
+        </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.loginbox {text-align: center; }
+.loginbox ul {text-align: center; list-style: none;}
+.loginbox li {margin: 10px;}
+.loginbox form { margin: 0 20px;}
+.container {padding: 10px;}
+
+.social-buttons { overflow: hidden;}
+.social-buttons li { float: left}
