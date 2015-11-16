@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(name='djangox',
@@ -8,7 +8,7 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.1.3',
+      version='0.1.4',
       package_dir={'djangox': 'djangox'},
       include_package_data=True,
 
