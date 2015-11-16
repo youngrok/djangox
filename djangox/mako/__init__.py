@@ -1,23 +1,24 @@
-import traceback
 import os
 import sys
+import traceback
 import types
 import warnings
+from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse, get_resolver, get_urlconf
 from django.http import HttpResponse, HttpResponseServerError
+from django.shortcuts import render
 from django.template.backends.base import BaseEngine
 from django.template.base import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine, _dirs_undefined
-from django.utils.deprecation import RemovedInDjango20Warning
-from django.utils.importlib import import_module
-from django.utils.translation import ugettext
-from mako.lookup import TemplateLookup
-from mako import exceptions
-from django.core.urlresolvers import reverse, get_resolver, get_urlconf
 from django.templatetags import static
+from django.utils.deprecation import RemovedInDjango20Warning
+from django.utils.translation import ugettext
+from mako import exceptions
+from mako.lookup import TemplateLookup
 from mako.template import Template
 
 
@@ -75,8 +76,7 @@ def render_to_response(filename, dictionary, context_instance=None):
     dictionary.update(default_context)
 
     if context_instance:
-        for context_dict in context_instance.dicts:
-            dictionary.update(context_dict)
+        return render(context_instance.request, filename, dictionary)
 
     if hasattr(settings, 'MAKO_DEFAULT_CONTEXT'):
         dictionary.update(settings.MAKO_DEFAULT_CONTEXT)
@@ -101,16 +101,22 @@ class MakoTemplateEngine(BaseEngine):
         options.setdefault('debug', settings.DEBUG)
         options.setdefault('file_charset', settings.FILE_CHARSET)
         super().__init__(params)
-        self.app_dirs_subdirectories = options.get('app_dirs_subdirectories', None)
+        self.apps = options.get('apps', None)
+        self.app_dirs = []
+        for app in self.apps:
+            app_module = import_module(app)
+            self.app_dirs.append(os.path.abspath(app_module.__path__[0]))
 
     def from_string(self, template_code):
         return MakoTemplateWrapper(Template(text=template_code))
 
     def get_template(self, template_name, dirs=_dirs_undefined):
-        if self.app_dirs_subdirectories and template_name.split('/')[0] not in self.app_dirs_subdirectories:
-            raise TemplateDoesNotExist('template does not exists in specified subdirectories: %s', str(self.app_dirs_subdirectories))
+        mt = template_lookup.get_template(template_name)
 
-        return MakoTemplateWrapper(template_lookup.get_template(template_name))
+        if not [dir for dir in self.app_dirs if os.path.join(dir, 'templates', template_name) == mt.filename]:
+            raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
+
+        return MakoTemplateWrapper(mt)
 
 
 class MakoTemplateWrapper(object):
