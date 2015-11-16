@@ -18,6 +18,7 @@ from django.templatetags import static
 from django.utils.deprecation import RemovedInDjango20Warning
 from django.utils.translation import ugettext
 from mako import exceptions
+from mako.exceptions import TemplateLookupException
 from mako.lookup import TemplateLookup
 from mako.template import Template
 
@@ -111,10 +112,13 @@ class MakoTemplateEngine(BaseEngine):
         return MakoTemplateWrapper(Template(text=template_code))
 
     def get_template(self, template_name, dirs=_dirs_undefined):
-        mt = template_lookup.get_template(template_name)
+        try:
+            mt = template_lookup.get_template(template_name)
 
-        if not [dir for dir in self.app_dirs if os.path.join(dir, 'templates', template_name) == mt.filename]:
-            raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
+            if not [dir for dir in self.app_dirs if os.path.join(dir, 'templates', template_name) == mt.filename]:
+                raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
+        except TemplateLookupException as e:
+            raise TemplateDoesNotExist(str(e))
 
         return MakoTemplateWrapper(mt)
 
