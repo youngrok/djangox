@@ -1,4 +1,9 @@
-from setuptools import setup
+import os
+from setuptools import setup, find_packages
+
+
+def find_package_data(path):
+    return [os.path.join(root[len(path) + 1:], name) for root, dirs, files in os.walk('djangox/apps/bs4tl') for name in files if not name.endswith('.py')]
 
 
 setup(name='djangox',
@@ -8,9 +13,11 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.1.4',
-      package_dir={'djangox': 'djangox'},
-      include_package_data=True,
+      version='0.1.6',
+      packages=find_packages(),
+      package_data={
+          'djangox.apps.bs4tl': find_package_data('djangox/apps/bs4tl')
+      },
 
       classifiers = [
                      'Development Status :: 3 - Alpha',
