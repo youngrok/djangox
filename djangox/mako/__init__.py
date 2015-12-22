@@ -11,7 +11,7 @@ from django.core.urlresolvers import reverse, get_resolver, get_urlconf
 from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.template.backends.base import BaseEngine
-from django.template.base import TemplateDoesNotExist
+from django.template import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine, _dirs_undefined
 from django.templatetags import static
