@@ -1,22 +1,22 @@
-<%def name="form(form, action, submit_label, enctype='application/x-www-form-urlencoded')">
+<%def name="form(form, action, submit_label, enctype='application/x-www-form-urlencoded', prefix='')">
     <form class="form" action="${action}" method="POST" enctype="${enctype}">
         <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
         % for field in form.hidden_fields():
-            ${hidden_field(field)}
+            ${hidden_field(field, prefix)}
         % endfor
         % for field in form.visible_fields():
-            ${visible_field(field)}
+            ${visible_field(field, prefix)}
         % endfor
         <input type="submit" value="${submit_label}" class="btn btn-primary">
     </form>
 </%def>
-<%def name="visible_field(field)">
+<%def name="visible_field(field, prefix='')">
     <div class="form-group ${'has-error' if field.errors else ''}">
-        <label for="field-${field.name}">${_(field.label)}</label>
+        <label for="${prefix}field-${field.name}">${_(field.label)}</label>
         % if hasattr(self, field.field.widget.__class__.__name__):
-            ${getattr(self, field.field.widget.__class__.__name__)(field)}
+            ${getattr(self, field.field.widget.__class__.__name__)(field, prefix)}
         % else:
-            ${TextInput(field)}
+            ${TextInput(field, prefix)}
         %endif
         % if field.help_text:
             <p class="text-muted">${_(field.help_text)}</p>
@@ -27,36 +27,36 @@
     </div>
 </%def>
 
-<%def name="TextInput(field)">\
-<input id="field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="TextInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="PasswordInput(field)">\
-<input id="field-${field.name}" type="password" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="PasswordInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="password" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="EmailInput(field)">\
-<input id="field-${field.name}" type="email" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="EmailInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="email" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="ClearableFileInput(field)">\
-<input id="field-${field.name}" type="file" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="ClearableFileInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="file" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="URLInput(field)">\
-<input id="field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="URLInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="text" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="NumberInput(field)">\
-<input id="field-${field.name}" type="number" name="${field.name}" value="${field.value()}" class="form-control">\
+<%def name="NumberInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="number" name="${field.name}" value="${field.value()}" class="form-control">\
 </%def>
 
-<%def name="Textarea(field)">\
-<textarea id="field-${field.name}" name="${field.name}" class="form-control">${field.value() or ''}</textarea>\
+<%def name="Textarea(field, prefix='')">\
+<textarea id="${prefix}field-${field.name}" name="${field.name}" class="form-control">${field.value() or ''}</textarea>\
 </%def>
 
-<%def name="Select(field)">
-    <select id="field-${field.name}" name="${field.name}" class="form-control">
+<%def name="Select(field, prefix='')">
+    <select id="${prefix}field-${field.name}" name="${field.name}" class="form-control">
         % for choice in field.field.choices:
             <option value="${choice[0]}"
                     ${'selected' if str(field.value()) == str(choice[0]) else ''}>${_(choice[1])}</option>
@@ -64,8 +64,8 @@
     </select>
 </%def>
 
-<%def name="SelectMultiple(field)">
-    <select id="field-${field.name}" name="${field.name}" class="form-control" multiple="multiple">
+<%def name="SelectMultiple(field, prefix='')">
+    <select id="${prefix}field-${field.name}" name="${field.name}" class="form-control" multiple="multiple">
         % for choice in field.field.choices:
             <option value="${choice[0]}"
                     ${'selected' if str(field.value()) == str(choice[0]) else ''}>${choice[1]}</option>
@@ -73,26 +73,27 @@
     </select>
 </%def>
 
-<%def name="DateTimeInput(field)">\
-<input id="field-${field.name}" type="datetime" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="DateTimeInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="datetime" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="DateInput(field)">\
-<input id="field-${field.name}" type="date" name="${field.name}" value="${field.value() or ''}" class="form-control datepicker">\
+<%def name="DateInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="date" name="${field.name}" value="${field.value() or ''}" class="form-control datepicker">\
 </%def>
 
-<%def name="MonthInput(field)">\
-<input id="field-${field.name}" type="month" name="${field.name}" value="${field.value() or ''}" class="form-control">\
+<%def name="MonthInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="month" name="${field.name}" value="${field.value() or ''}" class="form-control">\
 </%def>
 
-<%def name="hidden_field(field)">\
-<input id="field-${field.name}" type="hidden" name="${field.name}" value="${field.value() or ''}">\
+<%def name="hidden_field(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="hidden" name="${field.name}" value="${field.value() or ''}">\
         % for error in field.errors:
             <label>${field.name}</label>
             <p class="help-block">${ error }</p>
         % endfor
 </%def>
 
-<%def name="CheckboxInput(field)">\
-<input id="field-${field.name}" type="checkbox" name="${field.name}" value="checked" ${'checked="checked"' if field.value() else ''} class="">\
+<%def name="CheckboxInput(field, prefix='')">\
+<input id="${prefix}field-${field.name}" type="checkbox" name="${field.name}" value="checked" ${'checked="checked"' if field.value() else ''} class="">\
 </%def>
+
