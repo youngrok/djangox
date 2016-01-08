@@ -97,3 +97,6 @@
 <input id="${prefix}field-${field.name}" type="checkbox" name="${field.name}" value="checked" ${'checked="checked"' if field.value() else ''} class="">\
 </%def>
 
+<%def name="csrf_token_input()">
+    <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}"/>
+</%def>
