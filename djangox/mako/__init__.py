@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import traceback
@@ -174,7 +175,9 @@ class MakoTemplateWrapper(object):
                 return self.template.render(**context.flatten())
         except exceptions.TopLevelLookupException:
             raise
-        except:
-            traceback.print_exc()
-            return exceptions.html_error_template().render()
-
+        except Exception as e:
+            logging.exception(e)
+            if settings.DEBUG:
+                return exceptions.html_error_template().render()
+            else:
+                raise e
