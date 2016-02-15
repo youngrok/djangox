@@ -176,7 +176,7 @@ class MakoTemplateWrapper(object):
         except exceptions.TopLevelLookupException:
             raise
         except Exception as e:
-            logging.exception(e)
+            logging.error('Template Error\n request: %s\n context: %s', request, context, exc_info=e)
             if settings.DEBUG:
                 return exceptions.html_error_template().render()
             else:
