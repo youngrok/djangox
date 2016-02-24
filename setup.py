@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 
 def find_package_data(path):
-    return [os.path.join(root[len(path) + 1:], name) for root, dirs, files in os.walk('djangox/apps/bs4tl') for name in files if not name.endswith('.py')]
+    return [os.path.join(root[len(path) + 1:], name) for root, dirs, files in os.walk(path) for name in files if not name.endswith('.py')]
 
 
 setup(name='djangox',
@@ -13,10 +13,11 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.1.9',
+      version='0.1.10',
       packages=find_packages(),
       package_data={
-          'djangox.apps.bs4tl': find_package_data('djangox/apps/bs4tl')
+          'djangox.apps.bs4tl': find_package_data('djangox/apps/bs4tl'),
+          'djangox.apps.tools': find_package_data('djangox/apps/tools')
       },
 
       classifiers = [
