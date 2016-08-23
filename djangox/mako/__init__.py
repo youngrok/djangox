@@ -14,7 +14,7 @@ from django.shortcuts import render
 from django.template.backends.base import BaseEngine
 from django.template import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
-from django.template.engine import Engine, _dirs_undefined
+from django.template.engine import Engine
 from django.templatetags import static
 from django.utils.deprecation import RemovedInDjango20Warning
 from django.utils.translation import ugettext
@@ -34,9 +34,9 @@ def url(view_name, *args, **kwargs):
                 name = key.__module__ + '.' + key.__name__
             else:
                 name = key
-            
+
             if name.endswith(view_name):
-                return reverse(name, args=args, kwargs=kwargs)
+                return reverse(key, args=args, kwargs=kwargs)
         
         raise
         
@@ -112,7 +112,7 @@ class MakoTemplateEngine(BaseEngine):
     def from_string(self, template_code):
         return MakoTemplateWrapper(Template(text=template_code))
 
-    def get_template(self, template_name, dirs=_dirs_undefined):
+    def get_template(self, template_name, dirs=None):
         try:
             mt = template_lookup.get_template(template_name)
 
