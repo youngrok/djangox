@@ -1,5 +1,6 @@
 import logging
 import os
+import posixpath
 import sys
 import traceback
 import types
@@ -115,13 +116,18 @@ class MakoTemplateEngine(BaseEngine):
     def get_template(self, template_name, dirs=None):
         try:
             mt = template_lookup.get_template(template_name)
-
-            if not [dir for dir in self.app_dirs if os.path.join(dir, 'templates', template_name) == os.path.abspath(mt.filename)]:
-                raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
         except TemplateLookupException as e:
             raise TemplateDoesNotExist(str(e))
 
-        return MakoTemplateWrapper(mt)
+        for dir in self.app_dirs:
+            dir = dir.replace(os.path.sep, posixpath.sep)
+            srcfile = posixpath.normpath(posixpath.join(dir, 'templates', template_name))
+            if srcfile != mt.filename:
+                continue
+
+            return MakoTemplateWrapper(mt)
+
+        raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
 
 
 class MakoTemplateWrapper(object):
