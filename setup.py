@@ -13,7 +13,7 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.1.11',
+      version='0.1.13',
       packages=find_packages(),
       package_data={
           'djangox.apps.bs4tl': find_package_data('djangox/apps/bs4tl'),

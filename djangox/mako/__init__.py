@@ -16,13 +16,14 @@ from django.template.backends.base import BaseEngine
 from django.template import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine
-from django.templatetags import static
 from django.utils.deprecation import RemovedInDjango20Warning
 from django.utils.translation import ugettext
 from mako import exceptions
 from mako.exceptions import TemplateLookupException
 from mako.lookup import TemplateLookup
 from mako.template import Template
+
+from djangox.mako import staticfiles
 
 
 def url(view_name, *args, **kwargs):
@@ -44,7 +45,7 @@ def url(view_name, *args, **kwargs):
 
 default_context = {
     'url' : url,
-    'static': static.static,
+    'static': staticfiles.static,
     '_': ugettext,
 }
 
