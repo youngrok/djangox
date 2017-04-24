@@ -120,13 +120,9 @@ class MakoTemplateEngine(BaseEngine):
         except TemplateLookupException as e:
             raise TemplateDoesNotExist(str(e))
 
-        for dir in self.app_dirs:
-            dir = dir.replace(os.path.sep, posixpath.sep)
-            srcfile = posixpath.normpath(posixpath.join(dir, 'templates', template_name))
-            if srcfile != mt.filename:
-                continue
-
-            return MakoTemplateWrapper(mt)
+        for d in self.app_dirs:
+            if os.path.abspath(os.path.join(d, 'templates', template_name)) == os.path.abspath(mt.filename):
+                return MakoTemplateWrapper(mt)
 
         raise TemplateDoesNotExist("template does not exists in templates directories in specified apps: %s", str(self.apps))
 
