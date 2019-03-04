@@ -26,7 +26,7 @@ def discover_controllers(package, method_first=False):
         for member in dir(controller):
             func = getattr(controller, member)
             if not inspect.isfunction(func): continue
-            args = inspect.getargspec(func).args
+            args = inspect.getfullargspec(func).args
             
             # TODO filter request functions
             # if len(args) == 0 or args[0] != 'request': continue
