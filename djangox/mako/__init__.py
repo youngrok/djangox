@@ -9,14 +9,14 @@ from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.core.urlresolvers import reverse, get_resolver, get_urlconf
+from django.core.urls import reverse, get_resolver, get_urlconf
 from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.template.backends.base import BaseEngine
 from django.template import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine
-from django.utils.deprecation import RemovedInDjango20Warning
+from django.utils.deprecation import RemovedInDjango30Warning
 from django.utils.translation import ugettext
 from mako import exceptions
 from mako.exceptions import TemplateLookupException
@@ -159,12 +159,12 @@ class MakoTemplateWrapper(object):
                     "the two arguments refer to the same request.")
             warnings.warn(
                 "render() must be called with a dict, not a RequestContext.",
-                RemovedInDjango20Warning, stacklevel=2)
+                RemovedInDjango30Warning, stacklevel=2)
 
         elif isinstance(context, Context):
             warnings.warn(
                 "render() must be called with a dict, not a Context.",
-                RemovedInDjango20Warning, stacklevel=2)
+                RemovedInDjango30Warning, stacklevel=2)
 
         else:
             context = make_context(context, request)
