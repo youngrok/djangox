@@ -16,7 +16,7 @@ from django.template.backends.base import BaseEngine
 from django.template import TemplateDoesNotExist
 from django.template.context import RequestContext, Context, make_context
 from django.template.engine import Engine
-from django.utils.deprecation import RemovedInDjango30Warning
+from django.utils.deprecation import RemovedInDjango40Warning
 from django.utils.translation import ugettext
 from mako import exceptions
 from mako.exceptions import TemplateLookupException
@@ -159,12 +159,12 @@ class MakoTemplateWrapper(object):
                     "the two arguments refer to the same request.")
             warnings.warn(
                 "render() must be called with a dict, not a RequestContext.",
-                RemovedInDjango30Warning, stacklevel=2)
+                RemovedInDjango40Warning, stacklevel=2)
 
         elif isinstance(context, Context):
             warnings.warn(
                 "render() must be called with a dict, not a Context.",
-                RemovedInDjango30Warning, stacklevel=2)
+                RemovedInDjango40Warning, stacklevel=2)
 
         else:
             context = make_context(context, request)
