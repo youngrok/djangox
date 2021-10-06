@@ -101,7 +101,6 @@ class MakoTemplateEngine(BaseEngine):
         params = params.copy()
         options = params.pop('OPTIONS').copy()
         options.setdefault('debug', settings.DEBUG)
-        options.setdefault('file_charset', settings.FILE_CHARSET)
         super().__init__(params)
 
         self.context_processors = options.pop('context_processors', [])
