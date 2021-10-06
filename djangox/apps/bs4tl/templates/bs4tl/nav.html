@@ -1,5 +1,9 @@
-<%def name="nav_tab(label, href, icon, badge=None, extra_class='')">
-    <li class="${'active' if request.path == href or (hasattr(request, 'active_tab') and request.active_tab == href) else ''} ${extra_class}">
+<%def name="nav_tab(label, href, icon, badge=None, extra_class='', attrs={})">
+    <li
+        % for k,v in attrs.items():
+            ${'%s="%s"'%(k,v)}
+        % endfor
+        class="${'active' if request.path == href or (hasattr(request, 'active_tab') and request.active_tab == href) else ''} ${extra_class}">
         % if badge:
             <span class="badge" style="position: absolute; top: 5px; right: 5px; z-index:1;">${badge}</span>
         % endif
