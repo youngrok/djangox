@@ -15,7 +15,7 @@ from django.template.backends.utils import csrf_input_lazy, csrf_token_lazy
 from django.template.engine import Engine
 from django.templatetags import static
 from django.urls import reverse, get_resolver, get_urlconf
-from django.utils.translation import ugettext
+from django.utils.translation import gettext
 from mako import exceptions
 from mako.exceptions import TemplateLookupException
 from mako.lookup import TemplateLookup
@@ -44,7 +44,7 @@ def url(view_name, *args, **kwargs):
 default_context = {
     'url' : url,
     'static': staticfiles.static,
-    '_': ugettext,
+    '_': gettext,
 }
 
 default_charset = getattr(settings, 'DEFAULT_CHARSET', 'utf8')
