@@ -1,0 +1,135 @@
+#!/bin/bash
+set -euo pipefail
+
+PROJECT_NAME="{{ project_name }}"
+PROJECT_REPO="{{ project_repo }}"
+DJANGOX_REPO="{{ djangox_repo }}"
+BRANCH="{{ branch }}"
+HOME_DIR="{{ home }}"
+CURRENT_PATH="{{ current_path }}"
+SHARED_PATH="{{ shared_path }}"
+STATIC_PATH="{{ static_path }}"
+SETTINGS_PACKAGE="{{ settings_package }}"
+STATIC_DIR="{{ static_dir }}"
+SERVER_NAME="{{ server_name }}"
+GUNICORN_PORT="{{ gunicorn_port }}"
+HEALTH_PATH="{{ health_path }}"
+KEEP_RELEASES="{{ keep_releases }}"
+GIT_SSH_COMMAND="{{ git_ssh_command }}"
+
+export GIT_SSH_COMMAND
+export DJANGO_SETTINGS_MODULE="$SETTINGS_PACKAGE.production"
+export PYTHONUNBUFFERED=TRUE
+export AWS_DEFAULT_REGION="{{ aws_region }}"
+
+old_release="$(readlink "$CURRENT_PATH" 2>/dev/null || true)"
+old_static="$(readlink "$STATIC_PATH" 2>/dev/null || true)"
+work_dir="$(mktemp -d "$HOME_DIR/$PROJECT_NAME-build-XXXXXX")"
+
+rollback() {
+    if [ -n "$old_release" ]; then
+        ln -sfn "$old_release" "$CURRENT_PATH.next"
+        mv -Tf "$CURRENT_PATH.next" "$CURRENT_PATH"
+    fi
+    if [ -n "$old_static" ]; then
+        ln -sfn "$old_static" "$STATIC_PATH.next"
+        mv -Tf "$STATIC_PATH.next" "$STATIC_PATH"
+    fi
+    reload_gunicorn
+}
+
+reload_gunicorn() {
+    if sudo systemctl is-active --quiet gunicorn.service; then
+        sudo systemctl reload gunicorn.service
+    else
+        sudo systemctl start gunicorn.service
+    fi
+}
+
+cleanup_work_dir() {
+    if [ -n "${work_dir:-}" ] && [ -d "$work_dir" ]; then
+        rm -rf "$work_dir"
+    fi
+}
+
+trap cleanup_work_dir EXIT
+
+git clone --branch "$BRANCH" "$PROJECT_REPO" "$work_dir"
+commit="$(git -C "$work_dir" rev-parse HEAD)"
+stamp="$(git -C "$work_dir" show -s --format=%cd --date=format:%y%m%d-%H%M%S "$commit")"
+release_dir="$HOME_DIR/$PROJECT_NAME-$stamp"
+static_release_dir="$HOME_DIR/static-$stamp"
+
+if [ "$old_release" = "$release_dir" ]; then
+    printf "already active: %s\n" "$release_dir"
+    exit 0
+fi
+
+if [ -d "$release_dir" ]; then
+    rm -rf "$release_dir"
+fi
+mv "$work_dir" "$release_dir"
+work_dir=""
+
+if [ -d "$HOME_DIR/djangox/.git" ]; then
+    git -C "$HOME_DIR/djangox" fetch origin
+    git -C "$HOME_DIR/djangox" reset --hard origin/HEAD
+else
+    git clone "$DJANGOX_REPO" "$HOME_DIR/djangox"
+fi
+
+rm -rf "$static_release_dir"
+mkdir -p "$static_release_dir"
+
+python3 -m venv "$release_dir/.venv"
+"$release_dir/.venv/bin/pip" install --upgrade pip
+cd "$release_dir"
+"$release_dir/.venv/bin/pip" install -r requirements.txt
+
+cp "$SHARED_PATH/secret_settings.py" "$release_dir/$SETTINGS_PACKAGE/secret_settings.py"
+cp "$SHARED_PATH/production.py" "$release_dir/$SETTINGS_PACKAGE/production.py"
+
+cd "$release_dir/$STATIC_DIR"
+npm install
+npm run build-css
+
+cd "$release_dir"
+DJANGO_STATIC_ROOT="$static_release_dir" "$release_dir/.venv/bin/python" manage.py collectstatic --noinput --settings="$SETTINGS_PACKAGE.production"
+"$release_dir/.venv/bin/python" manage.py migrate --noinput --settings="$SETTINGS_PACKAGE.production"
+"$release_dir/.venv/bin/python" manage.py check --settings="$SETTINGS_PACKAGE.production"
+
+ln -sfn "$release_dir" "$CURRENT_PATH.next"
+mv -Tf "$CURRENT_PATH.next" "$CURRENT_PATH"
+ln -sfn "$static_release_dir" "$STATIC_PATH.next"
+mv -Tf "$STATIC_PATH.next" "$STATIC_PATH"
+
+if ! reload_gunicorn; then
+    rollback
+    exit 1
+fi
+
+if ! curl --fail --silent --show-error --max-time 10 -H "Host: $SERVER_NAME" "http://127.0.0.1:$GUNICORN_PORT$HEALTH_PATH" >/dev/null; then
+    rollback
+    exit 1
+fi
+
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl enable gunicorn.service >/dev/null
+
+current_real="$(readlink -f "$CURRENT_PATH")"
+static_real="$(readlink -f "$STATIC_PATH")"
+
+ls -dt "$HOME_DIR/$PROJECT_NAME"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | tail -n +"$((KEEP_RELEASES + 1))" | while read -r old_dir; do
+    if [ "$(readlink -f "$old_dir")" != "$current_real" ]; then
+        rm -rf "$old_dir"
+    fi
+done
+
+ls -dt "$HOME_DIR/static"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | tail -n +"$((KEEP_RELEASES + 1))" | while read -r old_dir; do
+    if [ "$(readlink -f "$old_dir")" != "$static_real" ]; then
+        rm -rf "$old_dir"
+    fi
+done
+
+printf "active: %s\n" "$release_dir"

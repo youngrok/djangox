@@ -13,11 +13,24 @@ setup(name='djangox',
       author_email='pak.youngrok@gmail.com',
       keywords= 'rest route autodiscover django djangox mako',
       url='https://github.com/youngrok/djangox',
-      version='0.1.18',
+      version='0.1.19',
       packages=find_packages(),
+      install_requires=[
+          'Django',
+          'boto3',
+          'mako',
+          'django-filter',
+          'typer',
+      ],
       package_data={
           'djangox.apps.bs4tl': find_package_data('djangox/apps/bs4tl'),
-          'djangox.apps.tools': find_package_data('djangox/apps/tools')
+          'djangox.apps.tools': find_package_data('djangox/apps/tools'),
+          'djangox.deploy': find_package_data('djangox/deploy'),
+      },
+      entry_points={
+          'console_scripts': [
+              'djangox=djangox.cli:main',
+          ],
       },
 
       classifiers = [

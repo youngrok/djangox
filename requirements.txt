@@ -1,2 +1,5 @@
 Django
+boto3
 mako
+django-filter
+typer

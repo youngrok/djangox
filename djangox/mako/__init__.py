@@ -82,6 +82,7 @@ def render_to_response(filename, dictionary, context_instance=None):
 
     if hasattr(settings, 'MAKO_DEFAULT_CONTEXT'):
         dictionary.update(settings.MAKO_DEFAULT_CONTEXT)
+    dictionary.pop('self', None)
 
     try:
         template = template_lookup.get_template(filename)
@@ -149,6 +150,7 @@ class MakoTemplateWrapper(object):
         context.update(default_context)
         if hasattr(settings, 'MAKO_DEFAULT_CONTEXT'):
             context.update(settings.MAKO_DEFAULT_CONTEXT)
+        context.pop('self', None)
 
         try:
             return self.template.render(**context)

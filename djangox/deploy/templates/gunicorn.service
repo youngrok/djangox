@@ -1,0 +1,21 @@
+[Unit]
+Description={{ project_name }} gunicorn daemon
+After=network.target
+
+[Service]
+PIDFile=/run/{{ project_name }}.pid
+User={{ ssh_user }}
+Group={{ ssh_user }}
+WorkingDirectory={{ current_path }}
+ExecStart={{ current_path }}/.venv/bin/gunicorn -w {{ gunicorn_processes }} --pid /run/{{ project_name }}.pid --bind 127.0.0.1:{{ gunicorn_port }} {{ settings_package }}.wsgi --timeout 1800 --log-level=warning
+Environment="DJANGO_SETTINGS_MODULE={{ settings_package }}.production"
+Environment="PYTHONUNBUFFERED=TRUE"
+Environment="AWS_DEFAULT_REGION={{ aws_region }}"
+Environment="DEPLOY_ENV={{ environment }}"
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+LimitNOFILE=infinity
+
+[Install]
+WantedBy=multi-user.target

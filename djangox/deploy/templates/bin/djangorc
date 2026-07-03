@@ -1,0 +1,5 @@
+. ~/{{ project_name }}/.venv/bin/activate
+export DJANGO_SETTINGS_MODULE={{ settings_package }}.production
+export PYTHONUNBUFFERED=TRUE
+export LC_ALL=en_US.UTF-8
+cd ~/{{ project_name }}

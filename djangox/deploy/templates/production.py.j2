@@ -1,0 +1,35 @@
+import os
+
+from .settings import *
+from . import secret_settings
+
+
+DEBUG = False
+
+ALLOWED_HOSTS = {{ allowed_hosts_python }}
+CSRF_TRUSTED_ORIGINS = {{ csrf_trusted_origins_python }}
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '{{ static_path }}')
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': secret_settings.DATABASE_NAME,
+        'USER': secret_settings.DATABASE_USER,
+        'PASSWORD': secret_settings.DATABASE_PASSWORD,
+        'HOST': secret_settings.DATABASE_HOST,
+        'PORT': secret_settings.DATABASE_PORT,
+    }
+}
+
+AWS_STORAGE_BUCKET_NAME = '{{ storage_bucket_name }}'
+AWS_S3_REGION_NAME = '{{ aws_region }}'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+AWS_LOCATION = 'attachments'
+AWS_QUERYSTRING_AUTH = False
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
