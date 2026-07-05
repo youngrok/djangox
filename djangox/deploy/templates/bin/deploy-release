@@ -40,10 +40,25 @@ rollback() {
 
 reload_gunicorn() {
     if sudo systemctl is-active --quiet gunicorn.service; then
-        sudo systemctl reload gunicorn.service
-    else
-        sudo systemctl start gunicorn.service
+        if pgrep -f -- "--chdir $CURRENT_PATH" >/dev/null; then
+            sudo systemctl reload gunicorn.service
+            return
+        fi
+        sudo systemctl stop gunicorn.service
     fi
+
+    sudo systemctl start gunicorn.service
+}
+
+check_health() {
+    for _ in $(seq 1 30); do
+        if curl --fail --silent --show-error --max-time 10 -H "Host: $SERVER_NAME" "http://127.0.0.1:$GUNICORN_PORT$HEALTH_PATH" >/dev/null; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
 }
 
 cleanup_work_dir() {
@@ -62,7 +77,7 @@ static_release_dir="$HOME_DIR/static-$stamp"
 
 if [ "$old_release" = "$release_dir" ]; then
     reload_gunicorn
-    curl --fail --silent --show-error --max-time 10 -H "Host: $SERVER_NAME" "http://127.0.0.1:$GUNICORN_PORT$HEALTH_PATH" >/dev/null
+    check_health
     printf "already active: %s\n" "$release_dir"
     exit 0
 fi
@@ -110,7 +125,7 @@ if ! reload_gunicorn; then
     exit 1
 fi
 
-if ! curl --fail --silent --show-error --max-time 10 -H "Host: $SERVER_NAME" "http://127.0.0.1:$GUNICORN_PORT$HEALTH_PATH" >/dev/null; then
+if ! check_health; then
     rollback
     exit 1
 fi
