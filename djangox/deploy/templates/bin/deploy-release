@@ -61,6 +61,8 @@ release_dir="$HOME_DIR/$PROJECT_NAME-$stamp"
 static_release_dir="$HOME_DIR/static-$stamp"
 
 if [ "$old_release" = "$release_dir" ]; then
+    reload_gunicorn
+    curl --fail --silent --show-error --max-time 10 -H "Host: $SERVER_NAME" "http://127.0.0.1:$GUNICORN_PORT$HEALTH_PATH" >/dev/null
     printf "already active: %s\n" "$release_dir"
     exit 0
 fi
