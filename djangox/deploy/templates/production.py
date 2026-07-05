@@ -53,12 +53,6 @@ def select_server(target=None):
     raise ValueError(f'No running EC2 instance found for {target}')
 
 
-instances = sorted(
-    running_instances(Conf.instance_tag_value, Conf.aws_profile,
-                      Conf.aws_region, Conf.instance_tag_name),
-    key=lambda instance: (tag_value(instance, 'Name'), instance['InstanceId']),
-)
-
 servers = [
     (instance['InstanceId'], {
         'ssh_user': Conf.ssh_user,
@@ -70,7 +64,11 @@ servers = [
         'instance_id': instance['InstanceId'],
         'instance_name': tag_value(instance, 'Name'),
     })
-    for instance in instances
+    for instance in sorted(
+        running_instances(Conf.instance_tag_value, Conf.aws_profile,
+                          Conf.aws_region, Conf.instance_tag_name),
+        key=lambda instance: (tag_value(instance, 'Name'), instance['InstanceId']),
+    )
 ]
 
 if not servers:

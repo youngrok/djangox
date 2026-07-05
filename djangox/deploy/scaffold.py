@@ -8,7 +8,6 @@ TEMPLATE_FILES = {
     'README.md': 'README.md',
     '__init__.py': '__init__.py',
     'conf.py': 'conf.py',
-    'inventory.py': 'inventory.py',
     'production.py': 'production.py',
     'ssh_config': 'ssh_config',
     'web.py': 'web.py',

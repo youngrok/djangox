@@ -194,7 +194,8 @@ class DjangoxCliTest(TestCase):
             self.assertIn("keep_releases =", conf.read_text())
             self.assertIn("static_dir = 'wiki/static'", conf.read_text())
             self.assertIn("deploy-release", web.read_text())
-            self.assertIn("pyinfra deploy/inventory.py deploy/web.py",
+            self.assertFalse((deploy_dir / 'inventory.py').exists())
+            self.assertIn("pyinfra deploy/production.py deploy/web.py",
                           readme.read_text())
             self.assertIn("python deploy/production.py", readme.read_text())
             self.assertIn("AWS_DEFAULT_REGION", production.read_text())

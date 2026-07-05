@@ -48,7 +48,7 @@ Run from the project root:
 
 ```bash
 direnv allow
-pyinfra {{ deploy_dir }}/inventory.py {{ deploy_dir }}/web.py
+pyinfra {{ deploy_dir }}/production.py {{ deploy_dir }}/web.py
 ```
 
 Connect to the production server:
