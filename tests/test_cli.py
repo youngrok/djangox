@@ -154,12 +154,15 @@ class DjangoxCliTest(TestCase):
             conf = deploy_dir / 'conf.py'
             web = deploy_dir / 'web.py'
             readme = deploy_dir / 'README.md'
+            production = deploy_dir / 'production.py'
 
             self.assertEqual(result.exit_code, 0)
             self.assertIn('Created:', result.output)
             self.assertIn('Updated:', result.output)
             self.assertTrue(conf.exists())
             self.assertTrue(web.exists())
+            self.assertTrue(production.exists())
+            self.assertTrue((deploy_dir / 'ssh_config').exists())
             self.assertTrue((deploy_dir / 'bin' / 'loadenv').exists())
             self.assertTrue((deploy_dir / 'bin' / 'deploy-release').exists())
             self.assertTrue((deploy_dir / 'gunicorn.service').exists())
@@ -193,6 +196,8 @@ class DjangoxCliTest(TestCase):
             self.assertIn("deploy-release", web.read_text())
             self.assertIn("pyinfra deploy/inventory.py deploy/web.py",
                           readme.read_text())
+            self.assertIn("python deploy/production.py", readme.read_text())
+            self.assertIn("AWS_DEFAULT_REGION", production.read_text())
             self.assertIn("ln -sfn",
                           (deploy_dir / 'bin' / 'deploy-release').read_text())
             self.assertIn("STATIC_DIR=\"wiki/static\"",

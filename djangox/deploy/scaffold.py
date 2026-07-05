@@ -9,6 +9,8 @@ TEMPLATE_FILES = {
     '__init__.py': '__init__.py',
     'conf.py': 'conf.py',
     'inventory.py': 'inventory.py',
+    'production.py': 'production.py',
+    'ssh_config': 'ssh_config',
     'web.py': 'web.py',
     'production.py.j2': 'production.py.j2',
     'nginx-site.conf': 'nginx-site.conf',

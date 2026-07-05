@@ -1,0 +1,4 @@
+Host i-* mi-*
+    ProxyCommand sh -c "aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'"
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null

@@ -14,6 +14,7 @@ class Conf:
 
     ssh_user = 'ubuntu'
     ssh_key = str(Path({{ ssh_key_py }}).expanduser())
+    ssh_config_path = deploy_dir / 'ssh_config'
     instance_tag_name = 'project'
     instance_tag_value = project_name
 

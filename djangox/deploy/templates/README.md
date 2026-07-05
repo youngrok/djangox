@@ -51,6 +51,14 @@ direnv allow
 pyinfra {{ deploy_dir }}/inventory.py {{ deploy_dir }}/web.py
 ```
 
+Connect to the production server:
+
+```bash
+python {{ deploy_dir }}/production.py
+python {{ deploy_dir }}/production.py list
+python {{ deploy_dir }}/production.py 0
+```
+
 `djangox setup` writes `AWS_PROFILE` to `.envrc`. Region defaults to
 `{{ aws_region }}` and can be overridden with the standard AWS environment
 variables `AWS_REGION` or `AWS_DEFAULT_REGION`.
