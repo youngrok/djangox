@@ -41,6 +41,7 @@ apt.packages(
         'postgresql-client',
         'build-essential',
         'fonts-nanum',
+        'acl',
     ],
     _sudo=True,
 )
@@ -48,6 +49,7 @@ apt.packages(
 files.directory(f'{Conf.home}/.ssh', mode='700')
 files.directory(f'{Conf.home}/bin')
 files.directory(Conf.shared_path)
+server.shell(commands=[f'setfacl -m u:www-data:--x {Conf.home}'], _sudo=True)
 
 files.put(StringIO(secrets['GITHUB_DEPLOY_KEY']), Conf.github_deploy_key_path,
           mode='400')
