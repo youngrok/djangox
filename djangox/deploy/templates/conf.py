@@ -34,7 +34,7 @@ class Conf:
     static_dir = {{ static_dir_py }}
     gunicorn_processes = 3
     gunicorn_port = 8000
-    health_path = '/health/'
+    health_path = '/'
     keep_releases = 2
     storage_bucket_name = {{ storage_bucket_name_py }}
 
