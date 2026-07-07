@@ -81,6 +81,23 @@ cleanup_old_dirs() {
     done
 }
 
+cleanup_static_dirs() {
+    kept_stamps="$(
+        for dir in "$HOME_DIR/$PROJECT_NAME"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+            [ -d "$dir" ] || continue
+            name="$(basename "$dir")"
+            printf '%s\n' "${name#"$PROJECT_NAME-"}"
+        done
+    )"
+    for dir in "$HOME_DIR/static"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+        [ -d "$dir" ] || continue
+        name="$(basename "$dir")"
+        if ! printf '%s\n' "$kept_stamps" | grep -Fx "${name#static-}" >/dev/null; then
+            rm -rf "$dir"
+        fi
+    done
+}
+
 trap cleanup_work_dir EXIT
 
 if [ -d "$HOME_DIR/djangox/.git" ]; then
@@ -182,9 +199,8 @@ sudo systemctl reload nginx
 sudo systemctl enable gunicorn.service >/dev/null
 
 current_real="$(readlink -f "$CURRENT_PATH")"
-static_real="$(readlink -f "$STATIC_PATH")"
 
 cleanup_old_dirs "$PROJECT_NAME" "$current_real"
-cleanup_old_dirs static "$static_real"
+cleanup_static_dirs
 
 printf "active: %s\n" "$release_dir"
