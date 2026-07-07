@@ -222,6 +222,12 @@ class DjangoxCliTest(TestCase):
                           (deploy_dir / 'bin' / 'deploy-release').read_text())
             self.assertIn("GITHUB_DEPLOY_KEY", readme.read_text())
             self.assertIn("djangox.deploy.control", control.read_text())
+            self.assertNotIn("DJANGOX_CONTROL_REEXEC", control.read_text())
+            self.assertNotIn("os.execv", control.read_text())
+            self.assertIn('"app": "python infra.py"',
+                          (deploy_dir / 'cdk.json').read_text())
+            self.assertNotIn("../.venv/bin/python",
+                             (deploy_dir / 'cdk.json').read_text())
             self.assertFalse((Path(temp_dir) / '.gitignore').exists())
 
     def test_setup_is_idempotent(self):
