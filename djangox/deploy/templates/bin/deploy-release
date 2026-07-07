@@ -42,11 +42,13 @@ rollback() {
 
 reload_gunicorn() {
     if sudo systemctl is-active --quiet gunicorn.service; then
-        if pgrep -f -- "--chdir $CURRENT_PATH" >/dev/null; then
+        current_venv="$(readlink -f "$CURRENT_PATH/.venv")"
+        if pgrep -af -- "--chdir $CURRENT_PATH" | grep -F "$current_venv/" >/dev/null; then
             sudo systemctl reload gunicorn.service
             return
         fi
-        sudo systemctl stop gunicorn.service
+        sudo systemctl restart gunicorn.service
+        return
     fi
 
     sudo systemctl start gunicorn.service
