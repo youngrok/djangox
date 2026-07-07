@@ -26,7 +26,7 @@ export AWS_DEFAULT_REGION="{{ aws_region }}"
 
 old_release="$(readlink "$CURRENT_PATH" 2>/dev/null || true)"
 old_static="$(readlink "$STATIC_PATH" 2>/dev/null || true)"
-work_dir="$(mktemp -d "$HOME_DIR/$PROJECT_NAME-build-XXXXXX")"
+work_dir=""
 
 rollback() {
     if [ -n "$old_release" ]; then
@@ -83,7 +83,45 @@ cleanup_old_dirs() {
 
 trap cleanup_work_dir EXIT
 
-git clone --branch "$BRANCH" "$PROJECT_REPO" "$work_dir"
+if [ -d "$HOME_DIR/djangox/.git" ]; then
+    git -C "$HOME_DIR/djangox" fetch origin
+    git -C "$HOME_DIR/djangox" reset --hard origin/HEAD
+else
+    git clone "$DJANGOX_REPO" "$HOME_DIR/djangox"
+fi
+
+if [ -n "$old_release" ] && [ -d "$old_release/.git" ]; then
+    git -C "$old_release" fetch origin "$BRANCH"
+    if [ "$(git -C "$old_release" rev-parse HEAD)" = "$(git -C "$old_release" rev-parse FETCH_HEAD)" ]; then
+        reload_gunicorn
+        check_health
+        printf "already active: %s\n" "$old_release"
+        exit 0
+    fi
+fi
+
+old_release_real="$(readlink -f "$old_release" 2>/dev/null || true)"
+reusable_release="$(
+    for dir in "$HOME_DIR/$PROJECT_NAME"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+        [ -d "$dir" ] || continue
+        [ "$(readlink -f "$dir")" = "$old_release_real" ] && continue
+        printf '%s\n' "$dir"
+    done | sort | head -n 1
+)"
+
+if [ -n "$reusable_release" ]; then
+    work_dir="$(mktemp -d "$HOME_DIR/$PROJECT_NAME-build-XXXXXX")"
+    rmdir "$work_dir"
+    mv "$reusable_release" "$work_dir"
+    git -C "$work_dir" remote set-url origin "$PROJECT_REPO"
+    git -C "$work_dir" checkout "$BRANCH"
+    git -C "$work_dir" clean -fd -e .venv -e "$STATIC_DIR/node_modules"
+    git -C "$work_dir" pull --ff-only origin "$BRANCH"
+else
+    work_dir="$(mktemp -d "$HOME_DIR/$PROJECT_NAME-build-XXXXXX")"
+    git clone --branch "$BRANCH" "$PROJECT_REPO" "$work_dir"
+fi
+
 commit="$(git -C "$work_dir" rev-parse HEAD)"
 stamp="$(git -C "$work_dir" show -s --format=%cd --date=format:%y%m%d-%H%M%S "$commit")"
 release_dir="$HOME_DIR/$PROJECT_NAME-$stamp"
@@ -102,18 +140,13 @@ fi
 mv "$work_dir" "$release_dir"
 work_dir=""
 
-if [ -d "$HOME_DIR/djangox/.git" ]; then
-    git -C "$HOME_DIR/djangox" fetch origin
-    git -C "$HOME_DIR/djangox" reset --hard origin/HEAD
-else
-    git clone "$DJANGOX_REPO" "$HOME_DIR/djangox"
-fi
-
 rm -rf "$static_release_dir"
 mkdir -p "$static_release_dir"
 
-python3 -m venv "$release_dir/.venv"
-"$release_dir/.venv/bin/pip" install --upgrade pip
+if [ ! -x "$release_dir/.venv/bin/python" ]; then
+    python3 -m venv "$release_dir/.venv"
+    "$release_dir/.venv/bin/pip" install --upgrade pip
+fi
 cd "$release_dir"
 runtime_requirements="$(mktemp)"
 grep -Ev '^(pyinfra|aws-cdk-lib|constructs)([<>= ].*)?$' requirements.txt > "$runtime_requirements"
