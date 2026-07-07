@@ -127,9 +127,7 @@ reusable_release="$(
 )"
 
 if [ -n "$reusable_release" ]; then
-    work_dir="$(mktemp -d "$HOME_DIR/$PROJECT_NAME-build-XXXXXX")"
-    rmdir "$work_dir"
-    mv "$reusable_release" "$work_dir"
+    work_dir="$reusable_release"
     git -C "$work_dir" remote set-url origin "$PROJECT_REPO"
     git -C "$work_dir" checkout "$BRANCH"
     git -C "$work_dir" clean -fd -e .venv -e "$STATIC_DIR/node_modules"
@@ -151,10 +149,12 @@ if [ "$old_release" = "$release_dir" ]; then
     exit 0
 fi
 
-if [ -d "$release_dir" ]; then
+if [ "$work_dir" != "$release_dir" ] && [ -d "$release_dir" ]; then
     rm -rf "$release_dir"
 fi
-mv "$work_dir" "$release_dir"
+if [ "$work_dir" != "$release_dir" ]; then
+    mv "$work_dir" "$release_dir"
+fi
 work_dir=""
 
 rm -rf "$static_release_dir"
