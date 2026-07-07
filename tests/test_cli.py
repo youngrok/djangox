@@ -171,6 +171,8 @@ class DjangoxCliTest(TestCase):
             self.assertTrue((deploy_dir / 'bin' / 'loadenv').exists())
             self.assertTrue((deploy_dir / 'bin' / 'deploy-release').exists())
             self.assertTrue((deploy_dir / 'gunicorn.service').exists())
+            self.assertNotIn('activate',
+                             (deploy_dir / 'bin' / 'djangorc').read_text())
             self.assertIn("project_name = 'perspective'", conf.read_text())
             self.assertIn("settings_package = 'perspective'", conf.read_text())
             self.assertIn("git@github.com:youngrok/perspective.git",
