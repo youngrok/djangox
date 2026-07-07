@@ -1,4 +1,9 @@
+import atexit
 import json
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 
 import boto3
 
@@ -12,6 +17,38 @@ def session(profile_name=None, region_name='ap-northeast-2'):
 
 def client(service_name, profile_name=None, region_name='ap-northeast-2'):
     return session(profile_name, region_name).client(service_name)
+
+
+def temporary_ssh_key():
+    directory = Path(tempfile.mkdtemp(prefix='djangox-eic-'))
+    private_key = directory / 'id_ed25519'
+    command = ['ssh-keygen', '-t', 'ed25519', '-N', '', '-f',
+               private_key.as_posix(), '-q']
+    subprocess.run(command, check=True)
+    atexit.register(shutil.rmtree, directory)
+    return private_key.as_posix(), private_key.with_suffix('.pub').read_text().strip()
+
+
+def send_ssh_public_key(instance, os_user, public_key, profile_name=None,
+                        region_name='ap-northeast-2'):
+    response = client('ec2-instance-connect', profile_name,
+                      region_name).send_ssh_public_key(
+        InstanceId=instance['InstanceId'],
+        InstanceOSUser=os_user,
+        SSHPublicKey=public_key,
+        AvailabilityZone=instance['Placement']['AvailabilityZone'],
+    )
+    if not response['Success']:
+        raise RuntimeError(f"Failed to send SSH public key to {instance['InstanceId']}")
+    return response
+
+
+def temporary_instance_connect_key(instances, os_user, profile_name=None,
+                                   region_name='ap-northeast-2'):
+    private_key, public_key = temporary_ssh_key()
+    for instance in instances:
+        send_ssh_public_key(instance, os_user, public_key, profile_name, region_name)
+    return private_key
 
 
 def tag_value(resource, name):

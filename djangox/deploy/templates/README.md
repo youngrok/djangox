@@ -1,8 +1,43 @@
 # Deploy
 
-This folder deploys the Django web process with pyinfra.
+Use `control.py` from the project root. CDK manages AWS infrastructure in
+`deploy/infra.py`; pyinfra configures and deploys the server through SSM and EC2
+Instance Connect.
 
-Deployment uses timestamped releases with stable symlinks:
+```bash
+./control.py infra
+./control.py infra add production
+./control.py infra setup production
+./control.py deploy production
+./control.py connect
+```
+
+Review infrastructure changes and target hosts before setup or deploy.
+
+## Secrets
+
+- Common keys: `{{ project_name }}-keys-dev`
+- Production overrides: `{{ project_name }}-keys-production`
+- DB credentials: RDS managed secret
+
+Effective app keys:
+
+```text
+SECRET_KEY
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET
+GITHUB_DEPLOY_KEY
+```
+
+`infra add` creates secret shells and the GitHub deploy key when needed.
+Deployment reads common keys, applies production overrides, then adds RDS
+connection values. It does not mutate secrets during deploy.
+
+## Runtime
+
+Target EC2 instances are tagged `project={{ project_name }}`. The deploy caller
+needs read access to the app secrets and RDS secret, plus SSM and EC2 Instance
+Connect permissions.
 
 ```text
 ~/{{ project_name }}-YYMMDD-HHmmss
@@ -11,54 +46,4 @@ Deployment uses timestamped releases with stable symlinks:
 ~/static -> active static files
 ```
 
-The deploy script prepares a new release directory, switches the symlinks,
-reloads one gunicorn service, reloads nginx, and removes old releases beyond
-the configured retention count.
-
-Required AWS Secrets Manager secret:
-
-```text
-keys-{{ project_name }}-production
-```
-
-Required keys in that secret:
-
-```text
-SECRET_KEY
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET
-DATABASE_NAME
-DATABASE_USER
-DATABASE_PASSWORD
-DATABASE_HOST
-DATABASE_PORT
-GITHUB_DEPLOY_KEY
-```
-
-The target EC2 instance must be running and tagged:
-
-```text
-project={{ project_name }}
-```
-
-`GITHUB_DEPLOY_KEY` must be a private key whose public key is registered as a
-read-only GitHub deploy key for the project repository.
-
-Run from the project root:
-
-```bash
-direnv allow
-pyinfra {{ deploy_dir }}/production.py {{ deploy_dir }}/web.py
-```
-
-Connect to the production server:
-
-```bash
-python {{ deploy_dir }}/production.py
-python {{ deploy_dir }}/production.py list
-python {{ deploy_dir }}/production.py 0
-```
-
-`djangox setup` writes `AWS_PROFILE` to `.envrc`. Region defaults to
-`{{ aws_region }}` and can be overridden with the standard AWS environment
-variables `AWS_REGION` or `AWS_DEFAULT_REGION`.
+The server keeps 2 releases and reloads gunicorn/nginx after switching symlinks.

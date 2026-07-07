@@ -9,6 +9,7 @@ sys.path.append(Path(__file__).parent.as_posix())
 from conf import Conf
 from djangox.deploy.aws import running_instances
 from djangox.deploy.aws import tag_value
+from djangox.deploy.aws import temporary_instance_connect_key
 
 
 def ssh_env():
@@ -21,23 +22,21 @@ def ssh_env():
 
 def ssh_command(server):
     host, options = server
-    return [
+    command = [
         'ssh',
         '-F',
         options['ssh_config_file'],
-        '-i',
-        str(Path(options['ssh_key']).expanduser()),
-        '-o',
-        'IdentitiesOnly=yes',
-        f"{options['ssh_user']}@{host}",
     ]
+    if options.get('ssh_key'):
+        command.extend(['-i', options['ssh_key'], '-o', 'IdentitiesOnly=yes'])
+    command.append(f"{options['ssh_user']}@{host}")
+    return command
 
 
 def print_servers():
-    for index, server in enumerate(servers):
-        host, options = server
+    for index, (_, options) in enumerate(servers):
         print(f"{index}: {options['instance_name']} {options['instance_id']}")
-        print(shlex.join(ssh_command(server)))
+        print(f'./control.py connect {index}')
 
 
 def select_server(target=None):
@@ -53,28 +52,47 @@ def select_server(target=None):
     raise ValueError(f'No running EC2 instance found for {target}')
 
 
-servers = [
-    (instance['InstanceId'], {
+def should_authorize_instance_connect():
+    if __name__ != '__main__':
+        return True
+    return len(sys.argv) == 1 or sys.argv[1] not in ['list', 'servers']
+
+
+def server_data(instance):
+    data = {
         'ssh_user': Conf.ssh_user,
-        'ssh_key': Conf.ssh_key,
         'ssh_config_file': str(Conf.ssh_config_path),
         'ssh_connect_retries': 20,
         'ssh_connect_retry_min_delay': 3,
         'ssh_connect_retry_max_delay': 10,
         'instance_id': instance['InstanceId'],
         'instance_name': tag_value(instance, 'Name'),
-    })
-    for instance in sorted(
-        running_instances(Conf.instance_tag_value, Conf.aws_profile,
-                          Conf.aws_region, Conf.instance_tag_name),
-        key=lambda instance: (tag_value(instance, 'Name'), instance['InstanceId']),
-    )
-]
+    }
+    if ssh_key:
+        data['ssh_key'] = ssh_key
+    return data
 
-if not servers:
+
+instances = sorted(
+    running_instances(Conf.instance_tag_value, Conf.aws_profile,
+                      Conf.aws_region, Conf.instance_tag_name),
+    key=lambda instance: (tag_value(instance, 'Name'), instance['InstanceId']),
+)
+
+if not instances:
     raise ValueError(
         f'No running EC2 instance found with {Conf.instance_tag_name}={Conf.instance_tag_value}'
     )
+
+ssh_key = None
+if should_authorize_instance_connect():
+    ssh_key = temporary_instance_connect_key(instances, Conf.ssh_user,
+                                             Conf.aws_profile, Conf.aws_region)
+
+servers = [
+    (instance['InstanceId'], server_data(instance))
+    for instance in instances
+]
 
 
 if __name__ == '__main__':

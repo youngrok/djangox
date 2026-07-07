@@ -43,22 +43,22 @@ class DjangoxCliTest(TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(create_secret.call_args_list[0].args[0],
-                         'keys-perspective-dev')
+                         'perspective-keys-dev')
         self.assertEqual(create_secret.call_args_list[0].kwargs, {
             'region_name': 'ap-northeast-2',
             'profile_name': 'work',
         })
         self.assertEqual(create_secret.call_args_list[1].args[0],
-                         'keys-perspective-production')
-        self.assertIn('keys-perspective-dev: created', output)
-        self.assertIn('keys-perspective-production: already exists', output)
+                         'perspective-keys-production')
+        self.assertIn('perspective-keys-dev: created', output)
+        self.assertIn('perspective-keys-production: already exists', output)
         self.assertIn('\x1b[32m', output)
         self.assertIn('\x1b[33m', output)
         self.assertIn('\x1b[36m', output)
         self.assertNotIn('newsecret?region=ap-northeast-2', output)
-        self.assertIn('home?region=ap-northeast-2#!/secret?name=keys-perspective-dev',
+        self.assertIn('home?region=ap-northeast-2#!/secret?name=perspective-keys-dev',
                       output)
-        self.assertIn('home?region=ap-northeast-2#!/secret?name=keys-perspective-production',
+        self.assertIn('home?region=ap-northeast-2#!/secret?name=perspective-keys-production',
                       output)
         self.assertNotIn('SERVICE_API_KEY', output)
         self.assertNotIn('perspective/secret_settings.py', output)
@@ -99,6 +99,7 @@ class DjangoxCliTest(TestCase):
         runner = CliRunner()
 
         root_help = runner.invoke(app).output
+        self.assertIn('init', root_help)
         self.assertIn('setup', root_help)
         self.assertIn('secrets', root_help)
         secrets_help = runner.invoke(app, ['secrets']).output
@@ -134,7 +135,7 @@ class DjangoxCliTest(TestCase):
         self.assertIn('only with --local-only', setup_with_key_result.output)
         self.assertIn('--key', check_result.output)
 
-    def test_setup_writes_deploy_files_and_envrc(self):
+    def test_init_writes_control_deploy_files_and_envrc(self):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -143,10 +144,10 @@ class DjangoxCliTest(TestCase):
             os.chdir(temp_dir)
             try:
                 result = runner.invoke(app, [
-                    'setup',
-                    '--server-name', 'example.com',
+                    'init',
+                    '--domain', 'example.com',
                     '--aws-profile', 'ecolemo',
-                    '--ssh-key', '~/.ssh/perspective.pem'])
+                    '--skip-checks'])
             finally:
                 os.chdir(cwd)
 
@@ -155,6 +156,7 @@ class DjangoxCliTest(TestCase):
             web = deploy_dir / 'web.py'
             readme = deploy_dir / 'README.md'
             production = deploy_dir / 'production.py'
+            control = Path(temp_dir) / 'control.py'
 
             self.assertEqual(result.exit_code, 0)
             self.assertIn('Created:', result.output)
@@ -162,6 +164,9 @@ class DjangoxCliTest(TestCase):
             self.assertTrue(conf.exists())
             self.assertTrue(web.exists())
             self.assertTrue(production.exists())
+            self.assertTrue(control.exists())
+            self.assertTrue((deploy_dir / 'infra.py').exists())
+            self.assertTrue((deploy_dir / 'cdk.json').exists())
             self.assertTrue((deploy_dir / 'ssh_config').exists())
             self.assertTrue((deploy_dir / 'bin' / 'loadenv').exists())
             self.assertTrue((deploy_dir / 'bin' / 'deploy-release').exists())
@@ -171,8 +176,12 @@ class DjangoxCliTest(TestCase):
             self.assertIn("git@github.com:youngrok/perspective.git",
                           conf.read_text())
             self.assertIn("server_name = 'example.com'", conf.read_text())
-            self.assertIn("ssh_key = str(Path('~/.ssh/perspective.pem').expanduser())",
+            self.assertIn("storage_bucket_name = 'perspective'",
                           conf.read_text())
+            self.assertIn("secret_name = f'{project_name}-keys-{environment}'",
+                          conf.read_text())
+            self.assertNotIn("ec2_role_name", conf.read_text())
+            self.assertNotIn("ssh_key =", conf.read_text())
             self.assertIn("os.getenv('AWS_PROFILE')", conf.read_text())
             self.assertIn("os.getenv('AWS_REGION')", conf.read_text())
             self.assertNotIn("PERSPECTIVE_AWS_PROFILE", conf.read_text())
@@ -191,14 +200,20 @@ class DjangoxCliTest(TestCase):
             self.assertNotIn('perspective.pem',
                              (Path(temp_dir) / '.envrc').read_text())
             self.assertIn("current_path =", conf.read_text())
-            self.assertIn("keep_releases =", conf.read_text())
+            self.assertIn("keep_releases = 2", conf.read_text())
+            self.assertNotIn("shared_path", conf.read_text())
             self.assertIn("static_dir = 'wiki/static'", conf.read_text())
             self.assertIn("deploy-release", web.read_text())
+            self.assertNotIn("shared", web.read_text())
             self.assertFalse((deploy_dir / 'inventory.py').exists())
-            self.assertIn("pyinfra deploy/production.py deploy/web.py",
+            self.assertIn("./control.py deploy production",
                           readme.read_text())
-            self.assertIn("python deploy/production.py", readme.read_text())
+            self.assertIn("./control.py connect", readme.read_text())
             self.assertIn("AWS_DEFAULT_REGION", production.read_text())
+            self.assertIn("temporary_instance_connect_key",
+                          production.read_text())
+            self.assertNotIn("Conf.ssh_key", production.read_text())
+            self.assertNotIn("perspective.pem", production.read_text())
             self.assertIn("ln -sfn",
                           (deploy_dir / 'bin' / 'deploy-release').read_text())
             self.assertIn("STATIC_DIR=\"wiki/static\"",
@@ -206,8 +221,8 @@ class DjangoxCliTest(TestCase):
             self.assertIn("systemctl reload gunicorn.service",
                           (deploy_dir / 'bin' / 'deploy-release').read_text())
             self.assertIn("GITHUB_DEPLOY_KEY", readme.read_text())
-            self.assertNotIn("deploy/id_deploy",
-                             (Path(temp_dir) / '.gitignore').read_text())
+            self.assertIn("djangox.deploy.control", control.read_text())
+            self.assertFalse((Path(temp_dir) / '.gitignore').exists())
 
     def test_setup_is_idempotent(self):
         runner = CliRunner()
@@ -218,25 +233,22 @@ class DjangoxCliTest(TestCase):
             os.chdir(temp_dir)
             try:
                 first = runner.invoke(app, [
-                    'setup',
-                    '--server-name', 'example.com',
+                    'init',
+                    '--domain', 'example.com',
                     '--aws-profile', 'ecolemo',
-                    '--ssh-key', '~/.ssh/perspective.pem'])
+                    '--skip-checks'])
                 second = runner.invoke(app, [
-                    'setup',
-                    '--server-name', 'example.com',
+                    'init',
+                    '--domain', 'example.com',
                     '--aws-profile', 'ecolemo',
-                    '--ssh-key', '~/.ssh/perspective.pem'])
+                    '--skip-checks'])
             finally:
                 os.chdir(cwd)
 
             self.assertEqual(first.exit_code, 0)
             self.assertEqual(second.exit_code, 0)
             self.assertIn('No changes.', second.output)
-            self.assertEqual(
-                (Path(temp_dir) / '.gitignore').read_text().count('deploy/*.pem'),
-                1,
-            )
+            self.assertFalse((Path(temp_dir) / '.gitignore').exists())
             self.assertEqual(
                 (Path(temp_dir) / '.envrc').read_text().count('export AWS_PROFILE=ecolemo'),
                 1,
@@ -254,10 +266,10 @@ class DjangoxCliTest(TestCase):
             os.chdir(temp_dir)
             try:
                 result = runner.invoke(app, [
-                    'setup',
-                    '--server-name', 'example.com',
+                    'init',
+                    '--domain', 'example.com',
                     '--aws-profile', 'ecolemo',
-                    '--ssh-key', '~/.ssh/perspective.pem'])
+                    '--skip-checks'])
             finally:
                 os.chdir(cwd)
 

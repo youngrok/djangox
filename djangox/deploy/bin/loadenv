@@ -1,2 +1,0 @@
-#!/bin/sh
-bash --rcfile ~/bin/djangorc

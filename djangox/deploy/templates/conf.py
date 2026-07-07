@@ -7,25 +7,22 @@ class Conf:
 
     project_name = {{ project_name_py }}
     settings_package = {{ settings_package_py }}
-    environment = 'production'
+    environment = os.getenv('DJANGOX_ENVIRONMENT', 'production')
     aws_profile = os.getenv('AWS_PROFILE')
     aws_region = os.getenv('AWS_REGION') or os.getenv('AWS_DEFAULT_REGION') or {{ aws_region_py }}
-    secret_name = f'keys-{project_name}-{environment}'
+    common_secret_name = f'{project_name}-keys-dev'
+    secret_name = f'{project_name}-keys-{environment}'
 
     ssh_user = 'ubuntu'
-    ssh_key = str(Path({{ ssh_key_py }}).expanduser())
     ssh_config_path = deploy_dir / 'ssh_config'
     instance_tag_name = 'project'
     instance_tag_value = project_name
+    instance_type = 't3.micro'
+    ubuntu_ami_name = 'ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*'
 
     home = f'/home/{ssh_user}'
     current_path = f'{home}/{project_name}'
-    shared_path = f'{home}/{project_name}-shared'
-    release_glob = f'{home}/{project_name}-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]'
-    static_glob = f'{home}/static-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]'
-    project_dir = current_path
     project_repo = {{ repo_py }}
-    djangox_dir = f'{home}/djangox'
     djangox_repo = {{ djangox_repo_py }}
     branch = 'main'
 
@@ -33,15 +30,20 @@ class Conf:
     git_ssh_command = f'ssh -i {github_deploy_key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no'
 
     server_name = {{ server_name_py }}
-    server_alias = ''
-    nginx_port = 80
     static_path = f'{home}/static'
     static_dir = {{ static_dir_py }}
     gunicorn_processes = 3
     gunicorn_port = 8000
-    health_path = '/'
-    keep_releases = 5
+    health_path = '/health/'
+    keep_releases = 2
     storage_bucket_name = {{ storage_bucket_name_py }}
+
+    db_name = project_name
+    db_identifier = project_name
+    db_username = project_name
+    rds_instance_class = 'db.t4g.micro'
+    redis_node_type = 'cache.t4g.micro'
+    deletion_protection = True
 
     allowed_hosts = [server_name]
     csrf_trusted_origins = [f'https://{server_name}']

@@ -4,6 +4,7 @@ from typing import Optional
 import typer
 from django.core.management.utils import get_random_secret_key
 
+from djangox.deploy.scaffold import check_prerequisites
 from djangox.deploy.scaffold import setup_project
 from djangox.secrets import create_secret
 from djangox.secrets import get_secrets
@@ -24,10 +25,26 @@ class Environment(str, Enum):
     production = 'production'
 
 
+@app.command('init')
+def project_init(domain: str = typer.Option(..., '--domain', prompt=True),
+                 aws_profile: str = typer.Option(..., '--aws-profile',
+                                                  prompt=True),
+                 aws_region: str = 'ap-northeast-2',
+                 force: bool = False,
+                 skip_checks: bool = False):
+    if not skip_checks:
+        try:
+            check_prerequisites(aws_profile)
+        except ValueError as error:
+            typer.secho(str(error), fg=typer.colors.RED)
+            raise typer.Exit(1)
+
+    run_project_setup(domain, aws_profile, aws_region=aws_region, force=force)
+
+
 @app.command('setup')
 def project_setup(server_name: str = typer.Option(..., '--server-name'),
                   aws_profile: str = typer.Option(..., '--aws-profile'),
-                  ssh_key: str = typer.Option(..., '--ssh-key'),
                   project_name: str = '',
                   repo: str = '',
                   static_dir: str = '',
@@ -37,11 +54,21 @@ def project_setup(server_name: str = typer.Option(..., '--server-name'),
                   aws_region: str = 'ap-northeast-2',
                   storage_bucket_name: str = '',
                   force: bool = False):
+    run_project_setup(server_name, aws_profile, project_name, repo, static_dir,
+                      settings_package, deploy_dir, djangox_repo, aws_region,
+                      storage_bucket_name, force)
+
+
+def run_project_setup(server_name, aws_profile, project_name='', repo='',
+                      static_dir='', settings_package='', deploy_dir='deploy',
+                      djangox_repo='git@github.com:youngrok/djangox.git',
+                      aws_region='ap-northeast-2', storage_bucket_name='',
+                      force=False):
     try:
-        result = setup_project(server_name, aws_profile, ssh_key,
-                               project_name, repo, static_dir,
-                               settings_package, deploy_dir, djangox_repo,
-                               aws_region, storage_bucket_name, force)
+        result = setup_project(server_name, aws_profile, project_name, repo,
+                               static_dir, settings_package, deploy_dir,
+                               djangox_repo, aws_region, storage_bucket_name,
+                               force)
     except (FileExistsError, ValueError) as error:
         typer.secho(str(error), fg=typer.colors.RED)
         raise typer.Exit(1)
@@ -131,7 +158,6 @@ def check(project_name: str,
 @deploy_app.command('setup')
 def deploy_setup(server_name: str = typer.Option(..., '--server-name'),
                  aws_profile: str = typer.Option(..., '--aws-profile'),
-                 ssh_key: str = typer.Option(..., '--ssh-key'),
                  project_name: str = '',
                  repo: str = '',
                  static_dir: str = '',
@@ -141,16 +167,9 @@ def deploy_setup(server_name: str = typer.Option(..., '--server-name'),
                  aws_region: str = 'ap-northeast-2',
                  storage_bucket_name: str = '',
                  force: bool = False):
-    try:
-        result = setup_project(server_name, aws_profile, ssh_key,
-                               project_name, repo, static_dir,
-                               settings_package, deploy_dir, djangox_repo,
-                               aws_region, storage_bucket_name, force)
-    except (FileExistsError, ValueError) as error:
-        typer.secho(str(error), fg=typer.colors.RED)
-        raise typer.Exit(1)
-
-    print_setup_result(result)
+    run_project_setup(server_name, aws_profile, project_name, repo, static_dir,
+                      settings_package, deploy_dir, djangox_repo, aws_region,
+                      storage_bucket_name, force)
 
 
 def secret_values(name, keys, generated_keys):
@@ -182,7 +201,7 @@ def missing_keys(values, keys):
 
 
 def secret_name(project_name, env):
-    return f'keys-{project_name}-{env.value}'
+    return f'{project_name}-keys-{env.value}'
 
 
 def local_secret_settings_path(project_name, settings_package=None):

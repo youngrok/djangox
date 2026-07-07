@@ -7,7 +7,6 @@ DJANGOX_REPO="{{ djangox_repo }}"
 BRANCH="{{ branch }}"
 HOME_DIR="{{ home }}"
 CURRENT_PATH="{{ current_path }}"
-SHARED_PATH="{{ shared_path }}"
 STATIC_PATH="{{ static_path }}"
 SETTINGS_PACKAGE="{{ settings_package }}"
 STATIC_DIR="{{ static_dir }}"
@@ -21,6 +20,9 @@ export GIT_SSH_COMMAND
 export DJANGO_SETTINGS_MODULE="$SETTINGS_PACKAGE.production"
 export PYTHONUNBUFFERED=TRUE
 export AWS_DEFAULT_REGION="{{ aws_region }}"
+
+: "${SECRET_SETTINGS_SOURCE:?}"
+: "${PRODUCTION_SETTINGS_SOURCE:?}"
 
 old_release="$(readlink "$CURRENT_PATH" 2>/dev/null || true)"
 old_static="$(readlink "$STATIC_PATH" 2>/dev/null || true)"
@@ -67,6 +69,16 @@ cleanup_work_dir() {
     fi
 }
 
+cleanup_old_dirs() {
+    prefix="$1"
+    active="$2"
+    ls -dt "$HOME_DIR/$prefix"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | tail -n +"$((KEEP_RELEASES + 1))" | while read -r old_dir; do
+        if [ "$(readlink -f "$old_dir")" != "$active" ]; then
+            rm -rf "$old_dir"
+        fi
+    done
+}
+
 trap cleanup_work_dir EXIT
 
 git clone --branch "$BRANCH" "$PROJECT_REPO" "$work_dir"
@@ -103,8 +115,8 @@ python3 -m venv "$release_dir/.venv"
 cd "$release_dir"
 "$release_dir/.venv/bin/pip" install -r requirements.txt
 
-cp "$SHARED_PATH/secret_settings.py" "$release_dir/$SETTINGS_PACKAGE/secret_settings.py"
-cp "$SHARED_PATH/production.py" "$release_dir/$SETTINGS_PACKAGE/production.py"
+cp "$SECRET_SETTINGS_SOURCE" "$release_dir/$SETTINGS_PACKAGE/secret_settings.py"
+cp "$PRODUCTION_SETTINGS_SOURCE" "$release_dir/$SETTINGS_PACKAGE/production.py"
 
 cd "$release_dir/$STATIC_DIR"
 npm install
@@ -137,16 +149,7 @@ sudo systemctl enable gunicorn.service >/dev/null
 current_real="$(readlink -f "$CURRENT_PATH")"
 static_real="$(readlink -f "$STATIC_PATH")"
 
-ls -dt "$HOME_DIR/$PROJECT_NAME"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | tail -n +"$((KEEP_RELEASES + 1))" | while read -r old_dir; do
-    if [ "$(readlink -f "$old_dir")" != "$current_real" ]; then
-        rm -rf "$old_dir"
-    fi
-done
-
-ls -dt "$HOME_DIR/static"-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | tail -n +"$((KEEP_RELEASES + 1))" | while read -r old_dir; do
-    if [ "$(readlink -f "$old_dir")" != "$static_real" ]; then
-        rm -rf "$old_dir"
-    fi
-done
+cleanup_old_dirs "$PROJECT_NAME" "$current_real"
+cleanup_old_dirs static "$static_real"
 
 printf "active: %s\n" "$release_dir"

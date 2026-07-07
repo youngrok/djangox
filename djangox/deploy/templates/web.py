@@ -7,11 +7,31 @@ from pyinfra.operations import apt, files, server, systemd
 
 sys.path.append(Path(__file__).parent.as_posix())
 
-from djangox.secrets import dict_to_python_code
-from djangox.secrets import get_secrets
 from conf import Conf
+from djangox.deploy.aws import rds_instance
+from djangox.deploy.aws import secret_values
+from djangox.secrets import dict_to_python_code
 
-secrets = get_secrets(Conf.secret_name, Conf.aws_region, Conf.aws_profile)
+
+def deployment_secrets():
+    values = secret_values(Conf.common_secret_name, Conf.aws_profile, Conf.aws_region)
+    values.update(secret_values(Conf.secret_name, Conf.aws_profile, Conf.aws_region))
+    db = rds_instance(Conf.db_identifier, Conf.aws_profile, Conf.aws_region)
+    db_secret = secret_values(db['MasterUserSecret']['SecretArn'],
+                              Conf.aws_profile, Conf.aws_region)
+    values.update({
+        'DATABASE_NAME': Conf.db_name,
+        'DATABASE_USER': db_secret['username'],
+        'DATABASE_PASSWORD': db_secret['password'],
+        'DATABASE_HOST': db['Endpoint']['Address'],
+        'DATABASE_PORT': str(db['Endpoint']['Port']),
+    })
+    return values
+
+
+secrets = deployment_secrets()
+secret_settings_path = f'/tmp/{Conf.project_name}-secret_settings.py'
+production_settings_path = f'/tmp/{Conf.project_name}-production.py'
 
 config.ENV = {'GIT_SSH_COMMAND': Conf.git_ssh_command}
 
@@ -48,7 +68,6 @@ apt.packages(
 
 files.directory(f'{Conf.home}/.ssh', mode='700')
 files.directory(f'{Conf.home}/bin')
-files.directory(Conf.shared_path)
 server.shell(commands=[f'setfacl -m u:www-data:--x {Conf.home}'], _sudo=True)
 
 files.put(StringIO(secrets['GITHUB_DEPLOY_KEY']), Conf.github_deploy_key_path,
@@ -70,12 +89,13 @@ files.template(
 
 files.put(
     StringIO(dict_to_python_code(secrets)),
-    f'{Conf.shared_path}/secret_settings.py',
+    secret_settings_path,
     mode='600',
 )
 files.template(
     src=str(Conf.deploy_dir / 'production.py.j2'),
-    dest=f'{Conf.shared_path}/production.py',
+    dest=production_settings_path,
+    mode='600',
     **Conf.template_vars(),
 )
 
@@ -104,4 +124,9 @@ server.shell(commands=['systemctl daemon-reload'], _sudo=True)
 server.shell(commands=['nginx -t'], _sudo=True)
 
 systemd.service(service='nginx.service', reloaded=True, enabled=True, _sudo=True)
-server.shell(commands=[f'{Conf.home}/bin/deploy-release'])
+server.shell(commands=[
+    f"trap 'rm -f {secret_settings_path} {production_settings_path}' EXIT; "
+    f"SECRET_SETTINGS_SOURCE={secret_settings_path} "
+    f"PRODUCTION_SETTINGS_SOURCE={production_settings_path} "
+    f"{Conf.home}/bin/deploy-release"
+])

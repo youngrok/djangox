@@ -7,7 +7,9 @@ from pathlib import Path
 TEMPLATE_FILES = {
     'README.md': 'README.md',
     '__init__.py': '__init__.py',
+    'cdk.json': 'cdk.json',
     'conf.py': 'conf.py',
+    'infra.py': 'infra.py',
     'production.py': 'production.py',
     'ssh_config': 'ssh_config',
     'web.py': 'web.py',
@@ -19,9 +21,13 @@ TEMPLATE_FILES = {
     'bin/deploy-release': 'bin/deploy-release',
 }
 
+PROJECT_TEMPLATE_FILES = {
+    'control.py': 'control.py',
+}
 
-def setup_project(server_name, aws_profile, ssh_key, project_name='',
-                  repo='', static_dir='', settings_package='',
+
+def setup_project(server_name, aws_profile, project_name='', repo='',
+                  static_dir='', settings_package='',
                   deploy_dir='deploy',
                   djangox_repo='git@github.com:youngrok/djangox.git',
                   aws_region='ap-northeast-2',
@@ -31,39 +37,34 @@ def setup_project(server_name, aws_profile, ssh_key, project_name='',
     settings_package = settings_package or detect_settings_package(project_name)
     static_dir = static_dir or detect_static_dir()
     result = setup_deploy(project_name, repo, server_name, static_dir,
-                          ssh_key, settings_package, deploy_dir,
-                          djangox_repo, aws_region, storage_bucket_name,
-                          force)
+                          settings_package, deploy_dir, djangox_repo,
+                          aws_region, storage_bucket_name, force)
+    setup_control(result, force)
     add_status(result, update_envrc({'AWS_PROFILE': aws_profile}), Path('.envrc'))
     return result
 
 
-def setup_deploy(project_name, repo, server_name, static_dir, ssh_key='~/.ssh/id_rsa',
-                 settings_package='', deploy_dir='deploy',
+def setup_deploy(project_name, repo, server_name, static_dir, settings_package='',
+                 deploy_dir='deploy',
                  djangox_repo='git@github.com:youngrok/djangox.git',
                  aws_region='ap-northeast-2', storage_bucket_name='',
                  force=False):
     deploy_path = Path(deploy_dir)
     settings_package = settings_package or project_name.replace('-', '_')
-    storage_bucket_name = storage_bucket_name or f'{project_name}-files'
+    storage_bucket_name = storage_bucket_name or project_name
     values = {
         'project_name': project_name,
         'settings_package': settings_package,
-        'env_prefix': project_name.replace('-', '_').upper(),
-        'repo': repo,
         'server_name': server_name,
         'static_dir': static_dir,
-        'ssh_key': ssh_key,
         'djangox_repo': djangox_repo,
         'aws_region': aws_region,
         'storage_bucket_name': storage_bucket_name,
-        'deploy_dir': deploy_path.as_posix(),
         'project_name_py': repr(project_name),
         'settings_package_py': repr(settings_package),
         'repo_py': repr(repo),
         'server_name_py': repr(server_name),
         'static_dir_py': repr(static_dir),
-        'ssh_key_py': repr(ssh_key),
         'djangox_repo_py': repr(djangox_repo),
         'aws_region_py': repr(aws_region),
         'storage_bucket_name_py': repr(storage_bucket_name),
@@ -74,8 +75,17 @@ def setup_deploy(project_name, repo, server_name, static_dir, ssh_key='~/.ssh/id
         content = render_template(template, values)
         add_status(result, write_if_needed(path, content, force), path)
 
-    add_status(result, update_gitignore(deploy_path.as_posix()), Path('.gitignore'))
     return result
+
+
+def setup_control(result, force=False):
+    for template, target in PROJECT_TEMPLATE_FILES.items():
+        path = Path(target)
+        content = render_template(template, {})
+        status = write_if_needed(path, content, force)
+        if status in ['created', 'updated']:
+            path.chmod(0o755)
+        add_status(result, status, path)
 
 
 def render_template(name, values):
@@ -109,20 +119,6 @@ def write_if_needed(path, content, force=False):
     return 'modified'
 
 
-def update_gitignore(deploy_dir):
-    path = Path('.gitignore')
-    existed = path.exists()
-    lines = path.read_text(encoding='utf-8').splitlines() if path.exists() else []
-    original = list(lines)
-    for line in [f'{deploy_dir}/*.pem']:
-        if line not in lines:
-            lines.append(line)
-    if lines == original:
-        return 'unchanged'
-    path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-    return 'updated' if existed else 'created'
-
-
 def detect_project_name(repo):
     name = repo.rstrip('/').rsplit('/', 1)[-1]
     if name.endswith('.git'):
@@ -132,9 +128,12 @@ def detect_project_name(repo):
 
 def detect_repo():
     repo = run(['git', 'config', '--get', 'remote.origin.url'])
-    if not repo:
-        raise ValueError('Cannot detect git remote origin. Pass --repo.')
-    return repo
+    if repo:
+        return repo
+    login = run(['gh', 'api', 'user', '--jq', '.login'])
+    if login:
+        return f'git@github.com:{login}/{Path.cwd().name}.git'
+    raise ValueError('Cannot detect git remote origin.')
 
 
 def detect_settings_package(project_name):
@@ -175,6 +174,26 @@ def run(command):
     if result.returncode != 0:
         return ''
     return result.stdout.strip()
+
+
+def check_prerequisites(aws_profile):
+    checks = [
+        (['git', '--version'], 'Missing prerequisite: git',
+         'Install git, for example: brew install git'),
+        (['gh', '--version'], 'Missing prerequisite: GitHub CLI',
+         'Install GitHub CLI, for example: brew install gh'),
+        (['gh', 'auth', 'status'], 'Missing prerequisite: GitHub authentication',
+         'Run: gh auth login'),
+        (['aws', '--version'], 'Missing prerequisite: AWS CLI',
+         'Install AWS CLI, for example: brew install awscli'),
+        (['aws', 'sts', 'get-caller-identity', '--profile', aws_profile],
+         'Missing prerequisite: AWS profile access',
+         f'Run: aws configure sso --profile {aws_profile}\nThen: aws sso login --profile {aws_profile}'),
+    ]
+    for command, title, fix in checks:
+        result = subprocess.run(command, text=True, capture_output=True)
+        if result.returncode != 0:
+            raise ValueError(f'{title}\n\nCheck failed:\n  {" ".join(command)}\n\n{fix}')
 
 
 def update_envrc(values):

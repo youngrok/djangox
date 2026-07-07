@@ -31,7 +31,7 @@ def create_secret(secret_name, values=None, region_name='ap-northeast-2',
 def secrets_console_url(project_name, region_name='ap-northeast-2'):
     return 'https://{0}.console.aws.amazon.com/secretsmanager/listsecrets?region={0}&search={1}'.format(
         region_name,
-        quote(f'keys-{project_name}', safe=''))
+        quote(f'{project_name}-keys', safe=''))
 
 
 def secret_console_url(secret_name, region_name='ap-northeast-2'):
