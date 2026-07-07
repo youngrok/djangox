@@ -113,7 +113,10 @@ mkdir -p "$static_release_dir"
 python3 -m venv "$release_dir/.venv"
 "$release_dir/.venv/bin/pip" install --upgrade pip
 cd "$release_dir"
-"$release_dir/.venv/bin/pip" install -r requirements.txt
+runtime_requirements="$(mktemp)"
+grep -Ev '^(pyinfra|aws-cdk-lib|constructs)([<>= ].*)?$' requirements.txt > "$runtime_requirements"
+"$release_dir/.venv/bin/pip" install -r "$runtime_requirements"
+rm -f "$runtime_requirements"
 
 cp "$SECRET_SETTINGS_SOURCE" "$release_dir/$SETTINGS_PACKAGE/secret_settings.py"
 cp "$PRODUCTION_SETTINGS_SOURCE" "$release_dir/$SETTINGS_PACKAGE/production.py"
