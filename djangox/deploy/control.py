@@ -50,7 +50,7 @@ def infra_setup(environment: str):
 @app.command()
 def deploy(environment: str):
     Conf = load_conf(environment)
-    run(['pyinfra', f'deploy/{environment}.py', 'deploy/web.py'],
+    run(['pyinfra', '-y', f'deploy/{environment}.py', 'deploy/web.py'],
         env=command_env(Conf, environment))
 
 
