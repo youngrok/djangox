@@ -81,6 +81,18 @@ class ModelViewSetRouteTest(SimpleTestCase):
 
         self.assertEqual(response.status_code, 405)
 
+    def test_head_maps_to_get_actions(self):
+        factory = RequestFactory()
+
+        index = ArticleViewSet.as_view('index')(factory.head('/'))
+        detail = ArticleViewSet.as_view('detail')(factory.head('/hello/'),
+                                                  slug='hello')
+        search = ArticleViewSet.as_view('search')(factory.head('/search/'))
+
+        self.assertEqual(index.status_code, 200)
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(search.status_code, 200)
+
     def test_default_success_url_points_to_detail(self):
         view = ArticleViewSet()
         article = SimpleNamespace(slug='hello')

@@ -41,6 +41,8 @@ class BasicRoutingViewSet(View):
     def dispatch(self, request, *args, **kwargs):
         try:
             method = request.method.lower()
+            if method == 'head':
+                method = 'get'
             self.action = None
 
             if self.endpoint == 'index':
@@ -184,7 +186,11 @@ class ModelViewSet(BasicRoutingViewSet):
         ]
 
     def dispatch(self, request, *args, **kwargs):
-        if self.endpoint == 'search' and request.method.lower() == 'get':
+        method = request.method.lower()
+        if method == 'head':
+            method = 'get'
+
+        if self.endpoint == 'search' and method == 'get':
             self.action = self.search
             return self.action()
         if self.endpoint == 'search':
