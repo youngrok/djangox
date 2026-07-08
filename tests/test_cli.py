@@ -205,6 +205,7 @@ class DjangoxCliTest(TestCase):
             self.assertTrue(control.exists())
             self.assertTrue((deploy_dir / 'infra.py').exists())
             self.assertTrue((deploy_dir / 'cdk.json').exists())
+            self.assertTrue((deploy_dir / 'web.py').exists())
             self.assertTrue((deploy_dir / 'bin' / 'loadenv').exists())
             self.assertTrue((deploy_dir / 'bin' / 'deploy-release').exists())
             self.assertTrue((deploy_dir / 'gunicorn.service').exists())
@@ -244,19 +245,20 @@ class DjangoxCliTest(TestCase):
             self.assertIn("keep_releases = 2", conf.read_text())
             self.assertNotIn("shared_path", conf.read_text())
             self.assertIn("static_dir = 'wiki/static'", conf.read_text())
-            self.assertFalse((deploy_dir / 'web.py').exists())
             self.assertFalse((deploy_dir / 'inventory.py').exists())
             self.assertFalse((deploy_dir / 'ssh_config').exists())
             self.assertIn("./control.py deploy production",
                           readme.read_text())
             self.assertIn("./control.py connect", readme.read_text())
-            self.assertIn("Deployment environment marker",
+            self.assertIn("ssm_port_forwarded_servers",
+                          production.read_text())
+            self.assertIn("connect(Conf, servers, target)",
                           production.read_text())
             self.assertNotIn("Conf.ssh_key", production.read_text())
             self.assertNotIn("perspective.pem", production.read_text())
-            self.assertIn("AWS Systems Manager", readme.read_text())
-            self.assertNotIn("pyinfra", readme.read_text())
-            self.assertNotIn("Instance Connect", readme.read_text())
+            self.assertIn("pyinfra", readme.read_text())
+            self.assertIn("SSM port-forwarded SSH", readme.read_text())
+            self.assertIn("Instance Connect", readme.read_text())
             self.assertIn("ln -sfn",
                           (deploy_dir / 'bin' / 'deploy-release').read_text())
             self.assertIn("STATIC_DIR=\"wiki/static\"",
@@ -327,4 +329,4 @@ class DjangoxCliTest(TestCase):
             self.assertIn('Modified files kept:', result.output)
             self.assertIn('deploy/conf.py differs from the template',
                           result.output)
-            self.assertFalse((deploy_dir / 'web.py').exists())
+            self.assertTrue((deploy_dir / 'web.py').exists())

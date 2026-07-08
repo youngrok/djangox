@@ -10,8 +10,6 @@ from djangox.deploy.aws import ensure_secret
 from djangox.deploy.aws import secret_values
 from djangox.deploy.aws import stack_exists
 from djangox.deploy.aws import update_secret_values
-from djangox.deploy.ssm import connect as ssm_connect
-from djangox.deploy.ssm import deploy as ssm_deploy
 from djangox.secrets import secret_console_url
 
 
@@ -63,14 +61,18 @@ def infra_setup(environment: str):
 @app.command()
 def deploy(environment: str):
     Conf = load_conf(environment)
-    ssm_deploy(Conf)
+    run([sys.executable, '-m', 'pyinfra', '-y',
+         f'deploy/{environment}.py', 'deploy/web.py'],
+        env=command_env(Conf, environment))
 
 
 @app.command()
-def connect(target: str = typer.Option('', '--target'),
-            environment: str = 'production'):
+def connect(target: str = typer.Argument(''), environment: str = 'production'):
     Conf = load_conf(environment)
-    ssm_connect(Conf, target)
+    command = [sys.executable, f'deploy/{environment}.py']
+    if target:
+        command.append(target)
+    run(command, env=command_env(Conf, environment))
 
 
 def environments():

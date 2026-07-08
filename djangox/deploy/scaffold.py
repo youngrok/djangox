@@ -12,6 +12,7 @@ TEMPLATE_FILES = {
     'infra.py': 'infra.py',
     'production.py': 'production.py',
     'production.py.j2': 'production.py.j2',
+    'web.py': 'web.py',
     'nginx-site.conf': 'nginx-site.conf',
     'gunicorn.service': 'gunicorn.service',
     'bin/loadenv': 'bin/loadenv',

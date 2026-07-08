@@ -4,7 +4,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-import time
 
 import boto3
 
@@ -100,47 +99,6 @@ def update_secret_values(secret_name, values, profile_name=None,
         SecretString=json.dumps(current, ensure_ascii=False),
     )
     return current
-
-
-def send_shell_command(instance_ids, commands, profile_name=None,
-                       region_name='ap-northeast-2', comment='djangox deploy',
-                       timeout_seconds=3600):
-    response = client('ssm', profile_name, region_name).send_command(
-        InstanceIds=instance_ids,
-        DocumentName='AWS-RunShellScript',
-        Comment=comment,
-        Parameters={'commands': commands},
-        TimeoutSeconds=timeout_seconds,
-    )
-    return response['Command']['CommandId']
-
-
-def command_invocation(command_id, instance_id, profile_name=None,
-                       region_name='ap-northeast-2'):
-    return client('ssm', profile_name, region_name).get_command_invocation(
-        CommandId=command_id,
-        InstanceId=instance_id,
-    )
-
-
-def wait_command(command_id, instance_ids, profile_name=None,
-                 region_name='ap-northeast-2'):
-    ssm = client('ssm', profile_name, region_name)
-    pending = set(instance_ids)
-    results = {}
-    while pending:
-        time.sleep(2)
-        for instance_id in list(pending):
-            try:
-                result = ssm.get_command_invocation(CommandId=command_id,
-                                                    InstanceId=instance_id)
-            except ssm.exceptions.InvocationDoesNotExist:
-                continue
-            if result['Status'] in ['Pending', 'InProgress', 'Delayed']:
-                continue
-            results[instance_id] = result
-            pending.remove(instance_id)
-    return results
 
 
 def stack_exists(stack_name, profile_name=None, region_name='ap-northeast-2'):
