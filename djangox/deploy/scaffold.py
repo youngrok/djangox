@@ -11,8 +11,6 @@ TEMPLATE_FILES = {
     'conf.py': 'conf.py',
     'infra.py': 'infra.py',
     'production.py': 'production.py',
-    'ssh_config': 'ssh_config',
-    'web.py': 'web.py',
     'production.py.j2': 'production.py.j2',
     'nginx-site.conf': 'nginx-site.conf',
     'gunicorn.service': 'gunicorn.service',

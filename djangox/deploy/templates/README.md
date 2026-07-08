@@ -1,8 +1,7 @@
 # Deploy
 
 Use `control.py` from the project root. CDK manages AWS infrastructure in
-`deploy/infra.py`; pyinfra configures and deploys the server through SSM and EC2
-Instance Connect.
+`deploy/infra.py`; deploy and shell access go through AWS Systems Manager.
 
 ```bash
 ./control.py infra
@@ -30,14 +29,14 @@ GITHUB_DEPLOY_KEY
 ```
 
 `infra add` creates secret shells and the GitHub deploy key when needed.
-Deployment reads common keys, applies production overrides, then adds RDS
-connection values. It does not mutate secrets during deploy.
+Deployment sends a command through SSM. The EC2 instance reads common keys,
+production overrides, and the RDS managed secret with its IAM role. It does not
+mutate secrets during deploy.
 
 ## Runtime
 
 Target EC2 instances are tagged `project={{ project_name }}`. The deploy caller
-needs read access to the app secrets and RDS secret, plus SSM and EC2 Instance
-Connect permissions.
+needs SSM SendCommand/StartSession permissions for the target instances.
 
 ```text
 ~/{{ project_name }}-YYMMDD-HHmmss

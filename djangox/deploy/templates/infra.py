@@ -176,6 +176,9 @@ class WebStack(Stack):
                                        f'arn:aws:secretsmanager:{Conf.aws_region}:{self.account}:secret:{Conf.secret_name}-*',
                                        db.secret.secret_arn,
                                    ]},
+                                  {'Effect': 'Allow',
+                                   'Action': ['rds:DescribeDBInstances'],
+                                   'Resource': '*'},
                               ],
                           })
         redis_subnets = elasticache.CfnSubnetGroup(self, 'RedisSubnets',

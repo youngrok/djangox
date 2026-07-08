@@ -14,7 +14,6 @@ class Conf:
     secret_name = f'{project_name}-keys-{environment}'
 
     ssh_user = 'ubuntu'
-    ssh_config_path = deploy_dir / 'ssh_config'
     instance_tag_name = 'project'
     instance_tag_value = project_name
     instance_type = 't3.micro'
@@ -27,6 +26,7 @@ class Conf:
     branch = 'main'
 
     github_deploy_key_path = f'{home}/.ssh/id_deploy'
+    secret_files = {'GITHUB_DEPLOY_KEY': github_deploy_key_path}
     git_ssh_command = f'ssh -i {github_deploy_key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no'
 
     server_name = {{ server_name_py }}
