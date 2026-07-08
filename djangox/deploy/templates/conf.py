@@ -32,6 +32,8 @@ class Conf:
     server_name = {{ server_name_py }}
     static_path = f'{home}/static'
     static_dir = {{ static_dir_py }}
+    network = {{ network_py }}
+    vpc_name = ''
     gunicorn_processes = 3
     gunicorn_port = 8000
     health_path = '/'

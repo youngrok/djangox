@@ -218,6 +218,8 @@ class DjangoxCliTest(TestCase):
             self.assertIn("server_name = 'example.com'", conf.read_text())
             self.assertIn("storage_bucket_name = 'perspective'",
                           conf.read_text())
+            self.assertIn("network = 'simple'", conf.read_text())
+            self.assertIn("vpc_name = ''", conf.read_text())
             self.assertIn("secret_name = f'{project_name}-keys-{environment}'",
                           conf.read_text())
             self.assertNotIn("ec2_role_name", conf.read_text())
@@ -274,6 +276,28 @@ class DjangoxCliTest(TestCase):
             self.assertNotIn("../.venv/bin/python",
                              (deploy_dir / 'cdk.json').read_text())
             self.assertFalse((Path(temp_dir) / '.gitignore').exists())
+
+    def test_init_can_write_standard_network(self):
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.prepare_project(temp_dir)
+            cwd = os.getcwd()
+            os.chdir(temp_dir)
+            try:
+                result = runner.invoke(app, [
+                    'init',
+                    '--domain', 'example.com',
+                    '--aws-profile', 'ecolemo',
+                    '--network', 'standard',
+                    '--skip-checks'])
+            finally:
+                os.chdir(cwd)
+
+            conf = Path(temp_dir) / 'deploy' / 'conf.py'
+
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("network = 'standard'", conf.read_text())
 
     def test_setup_is_idempotent(self):
         runner = CliRunner()

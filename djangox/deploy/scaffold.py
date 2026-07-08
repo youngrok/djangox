@@ -30,14 +30,14 @@ def setup_project(server_name, aws_profile, project_name='', repo='',
                   deploy_dir='deploy',
                   djangox_repo='git@github.com:youngrok/djangox.git',
                   aws_region='ap-northeast-2',
-                  storage_bucket_name='', force=False):
+                  storage_bucket_name='', network='simple', force=False):
     repo = repo or detect_repo()
     project_name = project_name or detect_project_name(repo)
     settings_package = settings_package or detect_settings_package(project_name)
     static_dir = static_dir or detect_static_dir()
     result = setup_deploy(project_name, repo, server_name, static_dir,
                           settings_package, deploy_dir, djangox_repo,
-                          aws_region, storage_bucket_name, force)
+                          aws_region, storage_bucket_name, network, force)
     setup_control(result, force)
     add_status(result, update_envrc({'AWS_PROFILE': aws_profile}), Path('.envrc'))
     return result
@@ -47,7 +47,7 @@ def setup_deploy(project_name, repo, server_name, static_dir, settings_package='
                  deploy_dir='deploy',
                  djangox_repo='git@github.com:youngrok/djangox.git',
                  aws_region='ap-northeast-2', storage_bucket_name='',
-                 force=False):
+                 network='simple', force=False):
     deploy_path = Path(deploy_dir)
     settings_package = settings_package or project_name.replace('-', '_')
     storage_bucket_name = storage_bucket_name or project_name
@@ -59,6 +59,7 @@ def setup_deploy(project_name, repo, server_name, static_dir, settings_package='
         'djangox_repo': djangox_repo,
         'aws_region': aws_region,
         'storage_bucket_name': storage_bucket_name,
+        'network': network,
         'project_name_py': repr(project_name),
         'settings_package_py': repr(settings_package),
         'repo_py': repr(repo),
@@ -67,6 +68,7 @@ def setup_deploy(project_name, repo, server_name, static_dir, settings_package='
         'djangox_repo_py': repr(djangox_repo),
         'aws_region_py': repr(aws_region),
         'storage_bucket_name_py': repr(storage_bucket_name),
+        'network_py': repr(network),
     }
     result = new_result()
     for template, target in TEMPLATE_FILES.items():

@@ -1,5 +1,6 @@
 import sys
 import warnings
+import ipaddress
 from pathlib import Path
 
 import boto3
@@ -31,6 +32,197 @@ def aws_account_id():
     return session.client('sts').get_caller_identity()['Account']
 
 
+def ec2_client():
+    return boto3.Session(profile_name=Conf.aws_profile,
+                         region_name=Conf.aws_region).client('ec2')
+
+
+def selected_vpc_id():
+    filters = [{'Name': 'tag:Name', 'Values': [Conf.vpc_name]}] \
+        if Conf.vpc_name else [{'Name': 'is-default', 'Values': ['true']}]
+    vpcs = ec2_client().describe_vpcs(Filters=filters)['Vpcs']
+    if len(vpcs) != 1:
+        target = Conf.vpc_name or 'default VPC'
+        raise ValueError(f'Expected one VPC for {target}, found {len(vpcs)}')
+    return vpcs[0]['VpcId']
+
+
+def subnets(vpc_id):
+    return ec2_client().describe_subnets(
+        Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}]
+    )['Subnets']
+
+
+def route_tables(vpc_id):
+    return ec2_client().describe_route_tables(
+        Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}]
+    )['RouteTables']
+
+
+def route_table_by_subnet(vpc_id):
+    tables = route_tables(vpc_id)
+    by_subnet = {}
+    main = None
+    for table in tables:
+        for association in table.get('Associations', []):
+            if association.get('Main'):
+                main = table
+            if association.get('SubnetId'):
+                by_subnet[association['SubnetId']] = table
+    return by_subnet, main
+
+
+def is_public_route_table(table):
+    return any(
+        route.get('DestinationCidrBlock') == '0.0.0.0/0'
+        and route.get('GatewayId', '').startswith('igw-')
+        for route in table.get('Routes', [])
+    )
+
+
+def tag_value(resource, key):
+    for tag in resource.get('Tags', []):
+        if tag.get('Key') == key:
+            return tag.get('Value', '')
+    return ''
+
+
+def is_managed_private_subnet(subnet):
+    return tag_value(subnet, 'Name').startswith(f'{Conf.project_name}-private-')
+
+
+def existing_private_subnets(vpc_id):
+    by_subnet, main = route_table_by_subnet(vpc_id)
+    return [
+        subnet
+        for subnet in subnets(vpc_id)
+        if not is_public_route_table(by_subnet.get(subnet['SubnetId'], main))
+        and not is_managed_private_subnet(subnet)
+    ]
+
+
+def managed_private_subnets(vpc_id):
+    by_subnet, main = route_table_by_subnet(vpc_id)
+    return [
+        subnet
+        for subnet in sorted(subnets(vpc_id), key=lambda subnet: tag_value(subnet, 'Name'))
+        if not is_public_route_table(by_subnet.get(subnet['SubnetId'], main))
+        and is_managed_private_subnet(subnet)
+    ]
+
+
+def free_private_cidrs(vpc_id, count):
+    if count == 0:
+        return []
+    vpc = ec2_client().describe_vpcs(VpcIds=[vpc_id])['Vpcs'][0]
+    network = ipaddress.ip_network(vpc['CidrBlock'])
+    used = [ipaddress.ip_network(subnet['CidrBlock']) for subnet in subnets(vpc_id)]
+    cidrs = []
+    for cidr in network.subnets(new_prefix=max(network.prefixlen, 24)):
+        if all(not cidr.overlaps(existing) for existing in used + cidrs):
+            cidrs.append(cidr)
+        if len(cidrs) == count:
+            return [str(cidr) for cidr in cidrs]
+    raise ValueError(f'Not enough free CIDR blocks in {vpc_id}')
+
+
+def private_subnet_azs(vpc_id, existing, count):
+    used = {subnet['AvailabilityZone'] for subnet in existing}
+    candidates = [
+        subnet['AvailabilityZone']
+        for subnet in sorted(subnets(vpc_id),
+                             key=lambda subnet: subnet['AvailabilityZone'])
+        if subnet['AvailabilityZone'] not in used
+    ]
+    azs = list(dict.fromkeys(candidates))
+    if len(azs) < count:
+        raise ValueError(f'Not enough availability zones in {vpc_id}')
+    return azs[:count]
+
+
+def created_private_subnets(scope, vpc_id, existing):
+    managed = managed_private_subnets(vpc_id)
+    count = max(0, 2 - len(existing), len(managed))
+    cidrs = [subnet['CidrBlock'] for subnet in managed[:count]]
+    azs = [subnet['AvailabilityZone'] for subnet in managed[:count]]
+    missing = count - len(cidrs)
+    cidrs += free_private_cidrs(vpc_id, missing)
+    azs += private_subnet_azs(vpc_id, existing + managed, missing)
+    result = []
+    for index in range(count):
+        route_table = ec2.CfnRouteTable(scope, f'PrivateRouteTable{index + 1}',
+                                        vpc_id=vpc_id)
+        subnet = ec2.CfnSubnet(scope, f'PrivateSubnet{index + 1}',
+                               vpc_id=vpc_id,
+                               cidr_block=cidrs[index],
+                               availability_zone=azs[index],
+                               map_public_ip_on_launch=False)
+        ec2.CfnSubnetRouteTableAssociation(
+            scope, f'PrivateSubnetAssociation{index + 1}',
+            subnet_id=subnet.ref,
+            route_table_id=route_table.ref,
+        )
+        Tags.of(subnet).add('Name', f'{Conf.project_name}-private-{index + 1}')
+        result.append(ec2.Subnet.from_subnet_attributes(
+            scope, f'CreatedPrivateSubnet{index + 1}',
+            subnet_id=subnet.ref,
+            availability_zone=azs[index],
+            route_table_id=route_table.ref,
+        ))
+    return result
+
+
+def private_subnets(scope, vpc_id):
+    existing = existing_private_subnets(vpc_id)
+    imported = [
+        ec2.Subnet.from_subnet_id(scope, f'ExistingPrivateSubnet{index + 1}',
+                                  subnet['SubnetId'])
+        for index, subnet in enumerate(existing)
+    ]
+    return imported + created_private_subnets(scope, vpc_id, existing)
+
+
+def simple_network(scope):
+    vpc_id = selected_vpc_id()
+    vpc = ec2.Vpc.from_lookup(scope, 'Vpc', vpc_id=vpc_id)
+    data_subnets = private_subnets(scope, vpc_id)
+    return (
+        vpc,
+        ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+        ec2.SubnetSelection(subnets=data_subnets),
+        data_subnets,
+    )
+
+
+def standard_network(scope):
+    vpc = ec2.Vpc(scope, 'Vpc',
+                 ip_addresses=ec2.IpAddresses.cidr('10.20.0.0/16'),
+                 max_azs=2,
+                 nat_gateways=1,
+                 subnet_configuration=[
+                     ec2.SubnetConfiguration(name='public',
+                                             subnet_type=ec2.SubnetType.PUBLIC,
+                                             cidr_mask=24),
+                     ec2.SubnetConfiguration(name='private',
+                                             subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
+                                             cidr_mask=24),
+                 ])
+    return (
+        vpc,
+        ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+        ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+        vpc.private_subnets,
+    )
+
+
+def network_config(scope):
+    if Conf.network == 'simple':
+        return simple_network(scope)
+    if Conf.network == 'standard':
+        return standard_network(scope)
+    raise ValueError(f'Unknown network: {Conf.network}')
+
+
 class WebStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id,
@@ -38,18 +230,7 @@ class WebStack(Stack):
                          **kwargs)
         Tags.of(self).add('project', Conf.project_name)
 
-        vpc = ec2.Vpc(self, 'Vpc',
-                      ip_addresses=ec2.IpAddresses.cidr('10.20.0.0/16'),
-                      max_azs=2,
-                      nat_gateways=1,
-                      subnet_configuration=[
-                          ec2.SubnetConfiguration(name='public',
-                                                  subnet_type=ec2.SubnetType.PUBLIC,
-                                                  cidr_mask=24),
-                          ec2.SubnetConfiguration(name='private',
-                                                  subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
-                                                  cidr_mask=24),
-                      ])
+        vpc, web_subnets, data_subnets, data_subnet_list = network_config(self)
         bucket = s3.Bucket(self, 'StorageBucket',
                            bucket_name=Conf.storage_bucket_name,
                            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
@@ -120,7 +301,8 @@ class WebStack(Stack):
                                            max_capacity=1,
                                            health_checks=autoscaling.HealthChecks.ec2(),
                                            user_data=user_data,
-                                           vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS))
+                                           associate_public_ip_address=Conf.network == 'simple',
+                                           vpc_subnets=web_subnets)
         data_sg = ec2.SecurityGroup(self, 'DataSg', vpc=vpc, allow_all_outbound=True)
         data_sg.connections.allow_from(asg, ec2.Port.tcp(5432))
         data_sg.connections.allow_from(asg, ec2.Port.tcp(6379))
@@ -161,7 +343,7 @@ class WebStack(Stack):
                                   publicly_accessible=False,
                                   security_groups=[data_sg],
                                   storage_encrypted=True,
-                                  vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+                                  vpc_subnets=data_subnets,
                                   removal_policy=RemovalPolicy.RETAIN if Conf.deletion_protection else RemovalPolicy.DESTROY)
         iam.CfnRolePolicy(self, 'Ec2SecretRead',
                           role_name=WEB_ROLE_NAME,
@@ -183,7 +365,7 @@ class WebStack(Stack):
                           })
         redis_subnets = elasticache.CfnSubnetGroup(self, 'RedisSubnets',
                                                   description=f'{Conf.project_name} redis subnets',
-                                                  subnet_ids=[subnet.subnet_id for subnet in vpc.private_subnets])
+                                                  subnet_ids=[subnet.subnet_id for subnet in data_subnet_list])
         redis = elasticache.CfnCacheCluster(self, 'Redis',
                                             engine='redis',
                                             engine_version='7.1',
@@ -196,7 +378,7 @@ class WebStack(Stack):
 
         CfnOutput(self, 'VpcId', value=vpc.vpc_id)
         CfnOutput(self, 'PublicSubnetIds', value=Fn.join(',', [subnet.subnet_id for subnet in vpc.public_subnets]))
-        CfnOutput(self, 'PrivateSubnetIds', value=Fn.join(',', [subnet.subnet_id for subnet in vpc.private_subnets]))
+        CfnOutput(self, 'PrivateSubnetIds', value=Fn.join(',', [subnet.subnet_id for subnet in data_subnet_list]))
         CfnOutput(self, 'AlbDnsName', value=alb.load_balancer_dns_name)
         CfnOutput(self, 'DomainName', value=Conf.server_name)
         CfnOutput(self, 'AsgName', value=asg.auto_scaling_group_name)

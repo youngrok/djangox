@@ -14,6 +14,16 @@ EC2 instances are reached through a temporary SSM port-forwarded SSH session.
 
 Review infrastructure changes and target hosts before setup or deploy.
 
+## Network
+
+`Conf.network = 'simple'` uses the default or named VPC. EC2 runs in public
+subnets, RDS/Redis use private subnets, and no NAT Gateway is created. Existing
+private subnets are reused; missing private subnets are created.
+
+`Conf.network = 'standard'` creates a new VPC with public and private-with-egress
+subnets. EC2, RDS, and Redis run in private subnets, and one NAT Gateway is
+created for outbound internet access.
+
 ## Secrets
 
 - Common keys: `{{ project_name }}-keys-dev`

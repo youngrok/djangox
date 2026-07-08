@@ -25,10 +25,16 @@ class Environment(str, Enum):
     production = 'production'
 
 
+class Network(str, Enum):
+    simple = 'simple'
+    standard = 'standard'
+
+
 @app.command('init')
 def project_init(domain: str = typer.Option(..., '--domain', prompt=True),
                  aws_profile: str = typer.Option(..., '--aws-profile',
                                                   prompt=True),
+                 network: Network = Network.simple,
                  aws_region: str = 'ap-northeast-2',
                  force: bool = False,
                  skip_checks: bool = False):
@@ -39,7 +45,8 @@ def project_init(domain: str = typer.Option(..., '--domain', prompt=True),
             typer.secho(str(error), fg=typer.colors.RED)
             raise typer.Exit(1)
 
-    run_project_setup(domain, aws_profile, aws_region=aws_region, force=force)
+    run_project_setup(domain, aws_profile, aws_region=aws_region,
+                      network=network.value, force=force)
 
 
 @app.command('setup')
@@ -53,22 +60,23 @@ def project_setup(server_name: str = typer.Option(..., '--server-name'),
                   djangox_repo: str = 'git@github.com:youngrok/djangox.git',
                   aws_region: str = 'ap-northeast-2',
                   storage_bucket_name: str = '',
+                  network: Network = Network.simple,
                   force: bool = False):
     run_project_setup(server_name, aws_profile, project_name, repo, static_dir,
                       settings_package, deploy_dir, djangox_repo, aws_region,
-                      storage_bucket_name, force)
+                      storage_bucket_name, network.value, force)
 
 
 def run_project_setup(server_name, aws_profile, project_name='', repo='',
                       static_dir='', settings_package='', deploy_dir='deploy',
                       djangox_repo='git@github.com:youngrok/djangox.git',
                       aws_region='ap-northeast-2', storage_bucket_name='',
-                      force=False):
+                      network='simple', force=False):
     try:
         result = setup_project(server_name, aws_profile, project_name, repo,
                                static_dir, settings_package, deploy_dir,
                                djangox_repo, aws_region, storage_bucket_name,
-                               force)
+                               network, force)
     except (FileExistsError, ValueError) as error:
         typer.secho(str(error), fg=typer.colors.RED)
         raise typer.Exit(1)
@@ -166,10 +174,11 @@ def deploy_setup(server_name: str = typer.Option(..., '--server-name'),
                  djangox_repo: str = 'git@github.com:youngrok/djangox.git',
                  aws_region: str = 'ap-northeast-2',
                  storage_bucket_name: str = '',
+                 network: Network = Network.simple,
                  force: bool = False):
     run_project_setup(server_name, aws_profile, project_name, repo, static_dir,
                       settings_package, deploy_dir, djangox_repo, aws_region,
-                      storage_bucket_name, force)
+                      storage_bucket_name, network.value, force)
 
 
 def secret_values(name, keys, generated_keys):
