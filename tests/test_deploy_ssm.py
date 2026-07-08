@@ -63,6 +63,7 @@ class DeploySsmTest(TestCase):
         self.assertIn("'get-secret-value'", script)
         self.assertIn("'rds'", script)
         self.assertIn("'describe-db-instances'", script)
+        self.assertIn('awscli-exe-linux-$aws_arch.zip', script)
         self.assertIn("'GITHUB_DEPLOY_KEY': '/home/ubuntu/.ssh/id_deploy'",
                       script)
         self.assertIn("ALLOWED_HOSTS = ['example.com']", script)

@@ -96,12 +96,24 @@ export HOME_DIR={shlex.quote(Conf.home)}
 export SSH_USER={shlex.quote(Conf.ssh_user)}
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates gnupg python3 python3-dev python3-venv git nginx nodejs postgresql-client build-essential fonts-nanum acl awscli
+DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates gnupg unzip python3 python3-dev python3-venv git nginx nodejs postgresql-client build-essential fonts-nanum acl
 if ! command -v node >/dev/null || ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)'; then
     apt-get remove -y libnode-dev nodejs-doc npm || true
     apt-get install -f -y
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y nodejs
+fi
+if ! aws --version 2>/dev/null | grep -q 'aws-cli/2'; then
+    apt-get remove -y awscli || true
+    aws_dir="$(mktemp -d)"
+    case "$(uname -m)" in
+        aarch64|arm64) aws_arch=aarch64 ;;
+        *) aws_arch=x86_64 ;;
+    esac
+    curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$aws_arch.zip" -o "$aws_dir/awscliv2.zip"
+    unzip -q "$aws_dir/awscliv2.zip" -d "$aws_dir"
+    "$aws_dir/aws/install" --update
+    rm -rf "$aws_dir"
 fi
 
 mkdir -p "$HOME_DIR/.ssh" "$HOME_DIR/bin"
