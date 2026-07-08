@@ -143,6 +143,17 @@ def wait_command(command_id, instance_ids, profile_name=None,
     return results
 
 
+def stack_exists(stack_name, profile_name=None, region_name='ap-northeast-2'):
+    cloudformation = client('cloudformation', profile_name, region_name)
+    try:
+        cloudformation.describe_stacks(StackName=stack_name)
+        return True
+    except cloudformation.exceptions.ClientError as error:
+        if 'does not exist' in str(error):
+            return False
+        raise
+
+
 def rds_instance(db_identifier, profile_name=None, region_name='ap-northeast-2'):
     response = client('rds', profile_name, region_name).describe_db_instances(
         DBInstanceIdentifier=db_identifier

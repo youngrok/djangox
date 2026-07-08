@@ -135,6 +135,46 @@ class DjangoxCliTest(TestCase):
         self.assertIn('only with --local-only', setup_with_key_result.output)
         self.assertIn('--key', check_result.output)
 
+    def test_infra_setup_can_block_unmanaged_existing_infra(self):
+        from djangox.deploy.control import app as control_app
+
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.prepare_project(temp_dir)
+            deploy_dir = Path(temp_dir) / 'deploy'
+            deploy_dir.mkdir()
+            (deploy_dir / 'production.py').write_text(
+                '# Deployment environment marker.\n')
+            (deploy_dir / 'conf.py').write_text(
+                "class Conf:\n"
+                "    project_name = 'perspective'\n"
+                "    environment = 'production'\n"
+                "    aws_profile = 'ecolemo'\n"
+                "    aws_region = 'ap-northeast-2'\n"
+                "    common_secret_name = 'perspective-keys-dev'\n"
+                "    secret_name = 'perspective-keys-production'\n"
+                "    project_repo = 'git@github.com:youngrok/perspective.git'\n"
+                "    create_infra = False\n")
+            cwd = os.getcwd()
+            os.chdir(temp_dir)
+            try:
+                with patch('djangox.deploy.control.ensure_deploy_key'), \
+                        patch('djangox.deploy.control.ensure_secret',
+                              return_value=False), \
+                        patch('djangox.deploy.control.stack_exists',
+                              return_value=False):
+                    result = runner.invoke(control_app, [
+                        'infra',
+                        'setup',
+                        'production'])
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('CloudFormation stack does not exist', result.output)
+        self.assertIn('Import existing resources', result.output)
+
     def test_init_writes_control_deploy_files_and_envrc(self):
         runner = CliRunner()
 

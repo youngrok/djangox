@@ -8,6 +8,7 @@ import typer
 
 from djangox.deploy.aws import ensure_secret
 from djangox.deploy.aws import secret_values
+from djangox.deploy.aws import stack_exists
 from djangox.deploy.aws import update_secret_values
 from djangox.deploy.ssm import connect as ssm_connect
 from djangox.deploy.ssm import deploy as ssm_deploy
@@ -45,7 +46,16 @@ def infra_add(environment: str):
 def infra_setup(environment: str):
     Conf = load_conf(environment)
     infra_add(environment)
-    run(['npx', 'aws-cdk', 'deploy', f'{Conf.project_name}-{environment}',
+    stack_name = f'{Conf.project_name}-{environment}'
+    can_create = getattr(Conf, 'create_infra', True)
+    exists = stack_exists(stack_name, Conf.aws_profile, Conf.aws_region)
+    if not can_create and not exists:
+        typer.secho(f'CloudFormation stack does not exist: {stack_name}',
+                    fg=typer.colors.RED)
+        typer.secho('Import existing resources before running infra setup.',
+                    fg=typer.colors.RED)
+        raise typer.Exit(1)
+    run(['npx', 'aws-cdk', 'deploy', stack_name,
          '--require-approval', 'never'],
         cwd=Path('deploy'), env=command_env(Conf, environment))
 
