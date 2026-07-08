@@ -87,13 +87,13 @@ def server_script(Conf):
 set -euo pipefail
 
 export AWS_DEFAULT_REGION={shlex.quote(Conf.aws_region)}
-PROJECT_NAME={shlex.quote(Conf.project_name)}
-ENVIRONMENT={shlex.quote(Conf.environment)}
-COMMON_SECRET_NAME={shlex.quote(Conf.common_secret_name)}
-SECRET_NAME={shlex.quote(Conf.secret_name)}
-DB_IDENTIFIER={shlex.quote(Conf.db_identifier)}
-HOME_DIR={shlex.quote(Conf.home)}
-SSH_USER={shlex.quote(Conf.ssh_user)}
+export PROJECT_NAME={shlex.quote(Conf.project_name)}
+export ENVIRONMENT={shlex.quote(Conf.environment)}
+export COMMON_SECRET_NAME={shlex.quote(Conf.common_secret_name)}
+export SECRET_NAME={shlex.quote(Conf.secret_name)}
+export DB_IDENTIFIER={shlex.quote(Conf.db_identifier)}
+export HOME_DIR={shlex.quote(Conf.home)}
+export SSH_USER={shlex.quote(Conf.ssh_user)}
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates gnupg python3 python3-dev python3-venv git nginx nodejs postgresql-client build-essential fonts-nanum acl awscli
