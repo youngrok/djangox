@@ -45,7 +45,8 @@ def infra_add(environment: str):
 def infra_setup(environment: str):
     Conf = load_conf(environment)
     infra_add(environment)
-    run(['npx', 'aws-cdk', 'deploy', f'{Conf.project_name}-{environment}'],
+    run(['npx', 'aws-cdk', 'deploy', f'{Conf.project_name}-{environment}',
+         '--require-approval', 'never'],
         cwd=Path('deploy'), env=command_env(Conf, environment))
 
 
