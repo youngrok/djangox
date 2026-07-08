@@ -167,11 +167,13 @@ values.update({{
 }})
 
 for key, path in {secret_files!r}.items():
+    Path(path).unlink(missing_ok=True)
     Path(path).write_text(values[key], encoding='utf-8')
     Path(path).chmod(0o400)
     subprocess.run(['chown', f'{{ssh_user}}:{{ssh_user}}', path], check=True)
 
 secret_settings = Path(f'/tmp/{{project_name}}-secret_settings.py')
+secret_settings.unlink(missing_ok=True)
 secret_settings.write_text(
     ''.join(f'{{key}} = {{value!r}}\\n' for key, value in values.items()),
     encoding='utf-8',
@@ -180,6 +182,7 @@ secret_settings.chmod(0o600)
 subprocess.run(['chown', f'{{ssh_user}}:{{ssh_user}}', secret_settings.as_posix()], check=True)
 PY
 
+rm -f /tmp/$PROJECT_NAME-production.py
 cat > /tmp/$PROJECT_NAME-production.py <<'EOF'
 {render_file(Conf.deploy_dir / 'production.py.j2', context)}
 EOF
