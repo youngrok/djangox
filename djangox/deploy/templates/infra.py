@@ -333,6 +333,7 @@ class WebStack(Stack):
         db = rds.DatabaseInstance(self, 'Db',
                                   vpc=vpc,
                                   database_name=Conf.db_name,
+                                  instance_identifier=Conf.db_identifier,
                                   credentials=rds.Credentials.from_generated_secret(Conf.db_username),
                                   engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_16),
                                   instance_type=ec2.InstanceType(Conf.rds_instance_class.removeprefix('db.')),

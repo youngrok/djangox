@@ -112,6 +112,15 @@ def stack_exists(stack_name, profile_name=None, region_name='ap-northeast-2'):
         raise
 
 
+def stack_outputs(stack_name, profile_name=None, region_name='ap-northeast-2'):
+    response = client('cloudformation', profile_name,
+                      region_name).describe_stacks(StackName=stack_name)
+    return {
+        output['OutputKey']: output['OutputValue']
+        for output in response['Stacks'][0].get('Outputs', [])
+    }
+
+
 def rds_instance(db_identifier, profile_name=None, region_name='ap-northeast-2'):
     response = client('rds', profile_name, region_name).describe_db_instances(
         DBInstanceIdentifier=db_identifier

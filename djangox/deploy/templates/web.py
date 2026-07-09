@@ -10,6 +10,7 @@ sys.path.append(Path(__file__).parent.as_posix())
 from conf import Conf
 from djangox.deploy.aws import rds_instance
 from djangox.deploy.aws import secret_values
+from djangox.deploy.aws import stack_outputs
 from djangox.secrets import dict_to_python_code
 
 
@@ -17,8 +18,9 @@ def deployment_secrets():
     values = secret_values(Conf.common_secret_name, Conf.aws_profile, Conf.aws_region)
     values.update(secret_values(Conf.secret_name, Conf.aws_profile, Conf.aws_region))
     db = rds_instance(Conf.db_identifier, Conf.aws_profile, Conf.aws_region)
-    db_secret = secret_values(db['MasterUserSecret']['SecretArn'],
-                              Conf.aws_profile, Conf.aws_region)
+    outputs = stack_outputs(f'{Conf.project_name}-{Conf.environment}',
+                            Conf.aws_profile, Conf.aws_region)
+    db_secret = secret_values(outputs['DbSecretArn'], Conf.aws_profile, Conf.aws_region)
     values.update({
         'DATABASE_NAME': Conf.db_name,
         'DATABASE_USER': db_secret['username'],

@@ -36,7 +36,7 @@ class Conf:
     vpc_name = ''
     gunicorn_processes = 3
     gunicorn_port = 8000
-    health_path = '/'
+    health_path = '/health/'
     keep_releases = 2
     storage_bucket_name = {{ storage_bucket_name_py }}
 
