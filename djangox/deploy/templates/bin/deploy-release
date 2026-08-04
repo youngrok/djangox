@@ -65,6 +65,15 @@ check_health() {
     return 1
 }
 
+refresh_settings() {
+    if cmp -s "$SECRET_SETTINGS_SOURCE" "$CURRENT_PATH/$SETTINGS_PACKAGE/secret_settings.py" && \
+       cmp -s "$PRODUCTION_SETTINGS_SOURCE" "$CURRENT_PATH/$SETTINGS_PACKAGE/production.py"; then
+        return 1
+    fi
+    install -m 600 "$SECRET_SETTINGS_SOURCE" "$CURRENT_PATH/$SETTINGS_PACKAGE/secret_settings.py"
+    install -m 600 "$PRODUCTION_SETTINGS_SOURCE" "$CURRENT_PATH/$SETTINGS_PACKAGE/production.py"
+}
+
 cleanup_work_dir() {
     if [ -n "${work_dir:-}" ] && [ -d "$work_dir" ]; then
         rm -rf "$work_dir"
@@ -110,6 +119,12 @@ fi
 if [ -n "$old_release" ] && [ -d "$old_release/.git" ]; then
     git -C "$old_release" fetch origin "$BRANCH"
     if [ "$(git -C "$old_release" rev-parse HEAD)" = "$(git -C "$old_release" rev-parse FETCH_HEAD)" ]; then
+        if refresh_settings; then
+            reload_gunicorn
+            check_health
+            printf "settings updated: %s\n" "$old_release"
+            exit 0
+        fi
         reload_gunicorn
         check_health
         printf "already active: %s\n" "$old_release"
